@@ -9,6 +9,7 @@ import MessageList, { type MessageListRef } from '@/components/chat/MessageList'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
 import InputBox from '@/components/InputBox/InputBox'
 import Header from '@/components/layout/Header'
+import PluginHost from '@/components/plugins/PluginHost'
 import ThreadHistoryDrawer from '@/components/session/ThreadHistoryDrawer'
 import * as remote from '@/packages/remote'
 import { updateSession as updateSessionStore, useSession } from '@/stores/chatStore'
@@ -171,6 +172,8 @@ function RouteComponent() {
 
       {/* MessageList 设置 key，确保每个 session 对应新的 MessageList 实例 */}
       <MessageList ref={messageListRef} key={`message-list${currentSessionId}`} currentSession={currentSession} />
+
+      <PluginHost />
 
       {/* <ScrollButtons /> */}
       <ErrorBoundary name="session-inputbox">
