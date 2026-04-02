@@ -7,6 +7,7 @@ import type {
   MessageToolCallPart,
 } from '@shared/types'
 import type { ToolSet } from 'ai'
+import { pluginStore } from '@/stores/pluginStore'
 
 export interface StreamProcessorCallbacks {
   onFileReceived: (mediaType: string, base64: string) => Promise<string>
@@ -85,6 +86,25 @@ export async function processStreamChunk(
         args,
       }
       contentParts.push(toolCallPart)
+
+      // TREEHOUSE: emit plugin tool call event
+      const pluginManifests = pluginStore.getState().manifests
+      const matchingPlugin = pluginManifests.find(
+        (m) => m.tools.some((t) => t.name === chunk.toolName) && !pluginStore.getState().degraded[m.id]
+      )
+      if (matchingPlugin) {
+        window.dispatchEvent(
+          new CustomEvent('treehouse:toolCall', {
+            detail: {
+              pluginId: matchingPlugin.id,
+              toolName: chunk.toolName,
+              params: args,
+              callId: chunk.toolCallId,
+            },
+          })
+        )
+      }
+
       break
     }
     case 'tool-result': {

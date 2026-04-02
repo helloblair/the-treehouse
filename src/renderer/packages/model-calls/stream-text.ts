@@ -2,7 +2,8 @@ import { getModel } from '@shared/models'
 import { ChatboxAIAPIError, OCRError } from '@shared/models/errors'
 import { sequenceMessages } from '@shared/utils/message'
 import { getModelSettings } from '@shared/utils/model_settings'
-import type { ModelMessage, ToolSet } from 'ai'
+import { tool as createTool, type ModelMessage, type ToolSet } from 'ai'
+import z from 'zod'
 import { t } from 'i18next'
 import { uniqueId } from 'lodash'
 import { createModelDependencies } from '@/adapters'
@@ -23,6 +24,8 @@ import {
   type ProviderOptions,
   type StreamTextResult,
 } from '../../../shared/types'
+import { registerToolCall, waitForPluginReady } from '@/stores/pluginBridge'
+import { pluginStore } from '@/stores/pluginStore'
 import { mcpController } from '../mcp/controller'
 import { convertToModelMessages, injectModelSystemPrompt } from './message-utils'
 import { imageOCR } from './preprocess'
@@ -313,6 +316,54 @@ export async function streamText(
       tools = {
         ...tools,
         ...fileToolSet.tools,
+      }
+    }
+
+    // TREEHOUSE: plugin tool injection
+    const pluginState = pluginStore.getState()
+    for (const manifest of pluginState.manifests) {
+      if (!manifest.enabled || pluginState.degraded[manifest.id]) continue
+      for (const pluginTool of manifest.tools) {
+        const capturedManifest = manifest
+        // Build a Zod schema from JSON Schema properties
+        const props = (pluginTool.parameters as { properties?: Record<string, { type?: string; description?: string }> }).properties || {}
+        const required = new Set((pluginTool.parameters as { required?: string[] }).required || [])
+        const zodShape: Record<string, z.ZodTypeAny> = {}
+        for (const [key, prop] of Object.entries(props)) {
+          let field: z.ZodTypeAny = z.string()
+          if (prop.type === 'number') field = z.number()
+          else if (prop.type === 'boolean') field = z.boolean()
+          if (prop.description) field = field.describe(prop.description)
+          zodShape[key] = required.has(key) ? field : field.optional()
+        }
+        const zodSchema = Object.keys(zodShape).length > 0 ? z.object(zodShape) : z.object({})
+
+        const pluginExecute = async (args: unknown, options: Record<string, unknown>) => {
+          const callId = (options.toolCallId as string) || uniqueId('treehouse-call-')
+          // Activate the plugin iframe
+          pluginStore.getState().setActivePlugin(capturedManifest.id)
+          // Wait for iframe to be ready
+          await waitForPluginReady(capturedManifest.id)
+          // Dispatch tool call to PluginHost → iframe
+          window.dispatchEvent(
+            new CustomEvent('treehouse:executeToolCall', {
+              detail: {
+                pluginId: capturedManifest.id,
+                toolName: pluginTool.name,
+                params: args,
+                callId,
+              },
+            })
+          )
+          // Wait for result from iframe via pluginBridge
+          return registerToolCall(callId)
+        }
+        tools[pluginTool.name] = {
+          ...createTool({ description: pluginTool.description, inputSchema: zodSchema }),
+          execute: async (args: Record<string, unknown>, options: Record<string, unknown>) => {
+            return pluginExecute(args, options)
+          },
+        } as unknown as ToolSet[string]
       }
     }
 

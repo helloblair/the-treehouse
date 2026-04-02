@@ -7,8 +7,34 @@ const defaultPlugins: PluginManifest[] = [
     name: 'Chess',
     iframeUrl: 'http://localhost:5174',
     mcpServerUrl: 'http://localhost:5174/mcp',
-    tools: [],
-    sandboxPolicy: 'allow-scripts allow-same-origin',
+    tools: [
+      {
+        name: 'start_game',
+        description: 'Start a new chess game. A visual interactive board is rendered — do NOT draw ASCII. The human plays White and moves by dragging pieces on the board. You play Black. After starting, WAIT for the human to make their move — do NOT call make_move until it is Black\'s turn.',
+        parameters: { type: 'object', properties: {}, additionalProperties: false },
+      },
+      {
+        name: 'make_move',
+        description: 'Make YOUR move as Black. Only call this when it is Black\'s turn. The human moves White pieces by dragging on the visual board — never call this for White moves. Uses algebraic notation (e.g. "e5", "Nf6", "O-O"). Call get_board_state first if you are unsure whose turn it is.',
+        parameters: {
+          type: 'object',
+          properties: { move: { type: 'string', description: 'The move in algebraic notation' } },
+          required: ['move'],
+          additionalProperties: false,
+        },
+      },
+      {
+        name: 'get_board_state',
+        description: 'Get the current board position as a FEN string. Use this to see what moves have been made and whose turn it is. The user can see the visual board — do NOT render a text/ASCII board.',
+        parameters: { type: 'object', properties: {}, additionalProperties: false },
+      },
+      {
+        name: 'resign',
+        description: 'Resign the game on behalf of the human player.',
+        parameters: { type: 'object', properties: {}, additionalProperties: false },
+      },
+    ],
+    sandboxPolicy: '',
     enabled: true,
   },
   {
@@ -17,8 +43,8 @@ const defaultPlugins: PluginManifest[] = [
     iframeUrl: 'http://localhost:5175',
     mcpServerUrl: 'http://localhost:5175/mcp',
     tools: [],
-    sandboxPolicy: 'allow-scripts allow-same-origin',
-    enabled: true,
+    sandboxPolicy: '',
+    enabled: false,
   },
   {
     id: 'treehouse-pet',
@@ -26,8 +52,8 @@ const defaultPlugins: PluginManifest[] = [
     iframeUrl: 'http://localhost:5176',
     mcpServerUrl: 'http://localhost:5176/mcp',
     tools: [],
-    sandboxPolicy: 'allow-scripts allow-same-origin',
-    enabled: true,
+    sandboxPolicy: '',
+    enabled: false,
   },
 ]
 
@@ -38,14 +64,23 @@ export function seedDefaultPlugins() {
   for (const plugin of defaultPlugins) {
     if (!existingIds.has(plugin.id)) {
       registerPlugin(plugin)
+    } else {
+      // Always sync default plugins with latest manifest (tools, sandboxPolicy, etc.)
+      registerPlugin(plugin)
     }
+    // Clear degraded state for default plugins on startup
+    pluginStore.setState((state) => {
+      delete state.degraded[plugin.id]
+      state.failureCounts[plugin.id] = 0
+    })
   }
 }
 
 // TREEHOUSE: fetch tool schemas from each plugin's MCP server
 export async function refreshPluginSchemas() {
   const { manifests, degraded } = pluginStore.getState()
-  const enabled = manifests.filter((m) => m.enabled && !degraded[m.id])
+  // Skip plugins that already have tools defined in their manifest
+  const enabled = manifests.filter((m) => m.enabled && !degraded[m.id] && m.tools.length === 0)
 
   const results = await Promise.allSettled(
     enabled.map(async (manifest) => {
@@ -68,11 +103,6 @@ export async function refreshPluginSchemas() {
   )
 
   return results
-}
-
-// TREEHOUSE: expose pluginStore on window for dev/testing
-if (typeof window !== 'undefined') {
-  ;(window as unknown as Record<string, unknown>).__pluginStore = pluginStore
 }
 
 // Re-fetch schemas when the set of enabled plugins changes (e.g. a new plugin is registered)
