@@ -38,6 +38,7 @@ import './setup/ga_init'
 import './setup/protect'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { initLastUsedModelStore } from './stores/lastUsedModelStore'
+import { initPluginStore } from './stores/pluginStore'
 import { initSettingsStore } from './stores/settingsStore'
 
 // 开发环境下引入错误测试工具
@@ -134,7 +135,7 @@ initializeApp()
     clearTimeout(tid)
 
     // 等待settings初始化完成，避免闪屏
-    const [settings] = await Promise.all([initSettingsStore(), initLastUsedModelStore()])
+    const [settings] = await Promise.all([initSettingsStore(), initLastUsedModelStore(), initPluginStore()])
 
     i18n.changeLanguage(settings.language)
     // 初始化完成，可以开始渲染
