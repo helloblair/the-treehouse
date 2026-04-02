@@ -6,6 +6,7 @@ import {
   IconHelpCircle,
   IconInfoCircle,
   IconLayoutSidebarLeftCollapse,
+  IconLogout,
   IconMessageChatbot,
   IconPhotoPlus,
   IconSettingsFilled,
@@ -26,6 +27,7 @@ import useVersion from './hooks/useVersion'
 import { navigateToSettings } from './modals/Settings'
 import { trackingEvent } from './packages/event'
 import platform from './platform'
+import { useSignOut } from './hooks/useAuth'
 import { featureFlags } from './utils/feature-flags'
 import icon from './static/icon.png'
 import { settingsStore, useLanguage } from './stores/settingsStore'
@@ -43,6 +45,8 @@ export default function Sidebar() {
   const setSidebarWidth = useUIStore((s) => s.setSidebarWidth)
   const sidebarMode = useUIStore((s) => s.sidebarMode)
   const setSidebarMode = useUIStore((s) => s.setSidebarMode)
+
+  const signOut = useSignOut()
 
   const sessionListViewportRef = useRef<HTMLDivElement>(null)
 
@@ -286,6 +290,14 @@ export default function Sidebar() {
               >
                 <ScalableIcon icon={IconSettingsFilled} size={20} />
               </ActionIcon>
+              <ActionIcon
+                variant="transparent"
+                color="chatbox-error"
+                size={24}
+                onClick={() => signOut()}
+              >
+                <ScalableIcon icon={IconLogout} size={20} />
+              </ActionIcon>
 
               {/* <Text
                 c="chatbox-tertiary"
@@ -362,6 +374,15 @@ export default function Sidebar() {
                 }
                 leftSection={<ScalableIcon icon={IconInfoCircle} size={20} />}
                 onClick={() => navigate({ to: '/about' })}
+                variant="light"
+                p="xs"
+              />
+              <NavLink
+                c="chatbox-error"
+                className="rounded"
+                label="Sign Out"
+                leftSection={<ScalableIcon icon={IconLogout} size={20} />}
+                onClick={() => signOut()}
                 variant="light"
                 p="xs"
               />

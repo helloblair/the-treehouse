@@ -3,6 +3,7 @@ import { ErrorBoundary } from '@/components/common/ErrorBoundary'
 import Toasts from '@/components/common/Toasts'
 import ExitFullscreenButton from '@/components/layout/ExitFullscreenButton'
 import useAppTheme from '@/hooks/useAppTheme'
+import { useAuth } from '@/hooks/useAuth'
 import { useSystemLanguageWhenInit } from '@/hooks/useDefaultSystemLanguage'
 import { useI18nEffect } from '@/hooks/useI18nEffect'
 import useNeedRoomForWinControls from '@/hooks/useNeedRoomForWinControls'
@@ -60,6 +61,7 @@ import { useSession } from '@/stores/chatStore'
 import { initOnboardingStore, onboardingStore } from '@/stores/onboardingStore'
 import * as premiumActions from '@/stores/premiumActions'
 import * as settingActions from '@/stores/settingActions'
+import { refreshPluginSchemas, seedDefaultPlugins } from '@/stores/pluginRegistry'
 import { initSettingsStore, settingsStore, useLanguage, useSettingsStore, useTheme } from '@/stores/settingsStore'
 import { useUIStore } from '@/stores/uiStore'
 import { CHATBOX_BUILD_CHANNEL, CHATBOX_BUILD_PLATFORM } from '@/variables'
@@ -129,6 +131,31 @@ function BackgroundImageOverlay() {
   )
 }
 
+function AuthGuard({ children }: { children: React.ReactNode }) {
+  const location = useLocation()
+  const { isLoading, isAuthenticated } = useAuth()
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated && location.pathname !== '/auth') {
+      router.navigate({ to: '/auth', replace: true })
+    }
+  }, [isLoading, isAuthenticated, location.pathname])
+
+  if (location.pathname === '/auth') {
+    return <>{children}</>
+  }
+
+  if (isLoading) {
+    return null
+  }
+
+  if (!isAuthenticated) {
+    return null
+  }
+
+  return <>{children}</>
+}
+
 function Root() {
   const { isExceeded, versionLoaded } = useVersion()
   const location = useLocation()
@@ -148,6 +175,8 @@ function Root() {
     ;(async () => {
       // Wait for stores to hydrate from persistent storage
       await Promise.all([initSettingsStore(), initOnboardingStore()])
+      seedDefaultPlugins()
+      void refreshPluginSchemas()
       void prefetchModelRegistry()
 
       const remoteConfig = await remote
@@ -252,6 +281,7 @@ function Root() {
   }, [needRoomForMacWindowControls])
 
   return (
+    <AuthGuard>
     <Box className="box-border App relative" spellCheck={spellCheck} dir={language === 'ar' ? 'rtl' : 'ltr'}>
       <BackgroundImageOverlay />
       {platform.type === 'desktop' && (getOS() === 'Windows' || getOS() === 'Linux') && <ExitFullscreenButton />}
@@ -302,6 +332,7 @@ function Root() {
       <Toasts /> {/* mui */}
       <SettingsModal />
     </Box>
+    </AuthGuard>
   )
 }
 
