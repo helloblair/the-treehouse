@@ -56,6 +56,18 @@ function PluginIframe({ manifest }: { manifest: (typeof pluginStore extends { ge
           setLoading(false)
           clearTimeout(loadTimerRef.current)
           markPluginReady(manifest.id)
+          // Restore cached state if available
+          const cached = pluginStore.getState().pluginStates[manifest.id]
+          if (cached) {
+            iframeRef.current?.contentWindow?.postMessage(
+              {
+                type: 'TREEHOUSE_RESTORE_STATE',
+                pluginId: manifest.id,
+                payload: { state: cached },
+              },
+              new URL(manifest.iframeUrl).origin,
+            )
+          }
           break
         }
         case 'TREEHOUSE_TOOL_RESULT': {
@@ -64,6 +76,11 @@ function PluginIframe({ manifest }: { manifest: (typeof pluginStore extends { ge
           break
         }
         case 'TREEHOUSE_COMPLETION': {
+          const sessionId = getDefaultStore().get(currentSessionIdAtom)
+          if (sessionId) {
+            const msg = createMessage('user', 'I finished my drawing! What do you think?')
+            void submitNewUserMessage(sessionId, { newUserMsg: msg, needGenerating: true })
+          }
           break
         }
         case 'TREEHOUSE_ERROR': {
@@ -123,13 +140,11 @@ function PluginIframe({ manifest }: { manifest: (typeof pluginStore extends { ge
       style={{
         position: 'relative',
         width: 420,
-        height: 450,
         flexShrink: 0,
-        borderRadius: 12,
         overflow: 'hidden',
-        border: '1px solid var(--mantine-color-default-border)',
-        marginTop: 8,
-        marginBottom: 8,
+        borderLeft: '1px solid var(--mantine-color-default-border)',
+        display: 'flex',
+        flexDirection: 'column',
       }}
     >
       {loading && (
@@ -152,8 +167,8 @@ function PluginIframe({ manifest }: { manifest: (typeof pluginStore extends { ge
         src={manifest.iframeUrl}
         {...(manifest.sandboxPolicy ? { sandbox: manifest.sandboxPolicy } : {})}
         style={{
-          width: 420,
-          height: 450,
+          width: '100%',
+          flex: 1,
           border: 'none',
           display: 'block',
         }}
