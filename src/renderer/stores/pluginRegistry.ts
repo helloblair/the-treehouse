@@ -42,9 +42,53 @@ const defaultPlugins: PluginManifest[] = [
     name: 'Pixel Art',
     iframeUrl: 'http://localhost:5175',
     mcpServerUrl: 'http://localhost:5175/mcp',
-    tools: [],
+    tools: [
+      {
+        name: 'start_canvas',
+        description:
+          'Open a blank pixel art canvas for the user to draw on. A visual interactive grid appears — the user draws by clicking cells. Optional param "size" can be 16 (default) or 32 for a larger canvas.',
+        parameters: {
+          type: 'object',
+          properties: {
+            size: {
+              type: 'number',
+              description: 'Grid size: 16 (default) or 32',
+            },
+          },
+          additionalProperties: false,
+        },
+      },
+      {
+        name: 'get_canvas_state',
+        description:
+          'Capture the current pixel art canvas as a base64 PNG image. Returns { imageBase64, width, height }. Use this when the user asks you to look at, describe, or critique their drawing.',
+        parameters: { type: 'object', properties: {}, additionalProperties: false },
+      },
+      {
+        name: 'clear_canvas',
+        description: 'Reset all cells on the pixel art canvas to white.',
+        parameters: { type: 'object', properties: {}, additionalProperties: false },
+      },
+      {
+        name: 'set_palette',
+        description:
+          'Replace the color palette row in the pixel art canvas with custom hex color values. Use this when the user asks for a themed palette (e.g. sunset, ocean, retro).',
+        parameters: {
+          type: 'object',
+          properties: {
+            colors: {
+              type: 'string',
+              description:
+                'JSON array of hex color strings, e.g. ["#ff6b35","#f7c59f","#efefd0","#004e89","#1a659e"]',
+            },
+          },
+          required: ['colors'],
+          additionalProperties: false,
+        },
+      },
+    ],
     sandboxPolicy: '',
-    enabled: false,
+    enabled: true,
   },
   {
     id: 'treehouse-pet',

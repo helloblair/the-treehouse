@@ -177,6 +177,8 @@ export async function streamText(
   if (webBrowsing && !webNotSupported) {
     toolSetInstructions += websearchToolSet.description
   }
+  // TREEHOUSE: plugin hint for image analysis
+  toolSetInstructions += '\nWhen a tool returns imageBase64, analyze it visually and describe or critique what you see.\n'
 
   params.messages = injectModelSystemPrompt(
     model.modelId,
