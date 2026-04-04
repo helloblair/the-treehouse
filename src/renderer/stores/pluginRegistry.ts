@@ -95,9 +95,100 @@ const defaultPlugins: PluginManifest[] = [
     name: 'PET-agogy',
     iframeUrl: 'http://localhost:5176',
     mcpServerUrl: 'http://localhost:5176/mcp',
-    tools: [],
+    tools: [
+      {
+        name: 'get_pet_state',
+        description:
+          "Get the student's pet current state including name, type, mood, hunger, happiness, health, and growth stage. Use this to check on the pet or reference it by name in conversation.",
+        parameters: { type: 'object', properties: {}, additionalProperties: false },
+      },
+      {
+        name: 'complete_task',
+        description:
+          'Award XP to the pet for the student completing a learning task (+20 XP, +10 happiness). Call this when the student finishes homework, answers correctly, or completes an activity. The pet evolves at 100 XP (junior) and 300 XP (adult). Returns whether the pet evolved.',
+        parameters: { type: 'object', properties: {}, additionalProperties: false },
+      },
+      {
+        name: 'play_with_pet',
+        description:
+          'Play with the pet to boost happiness (+30). The pet does an ecstatic animation for 3 seconds. Use when the student asks to play with or interact with their pet.',
+        parameters: { type: 'object', properties: {}, additionalProperties: false },
+      },
+      {
+        name: 'check_pet_health',
+        description:
+          "Check the pet's health and get a plain English summary of how it's doing. Returns all stats plus a human-readable summary.",
+        parameters: { type: 'object', properties: {}, additionalProperties: false },
+      },
+      {
+        name: 'bathe_pet',
+        description:
+          'Give the pet a bath (+15 happiness, +5 health, resets stinky timer). Use when the student asks to bathe or clean their pet, or when the pet is stinky.',
+        parameters: { type: 'object', properties: {}, additionalProperties: false },
+      },
+      {
+        name: 'pet_the_pet',
+        description:
+          'Pet/cuddle the pet for a small happiness and health boost (+10 happiness, +3 health). Use when the student wants to show affection to their pet.',
+        parameters: { type: 'object', properties: {}, additionalProperties: false },
+      },
+    ],
     sandboxPolicy: '',
-    enabled: false,
+    enabled: true,
+  },
+  {
+    id: 'treehouse-tokens',
+    name: 'Token Rewards',
+    iframeUrl: 'http://localhost:5177',
+    mcpServerUrl: 'http://localhost:5177/mcp',
+    tools: [
+      {
+        name: 'get_wallet',
+        description:
+          "Get the student's current token balance, lifetime earnings, and list of redeemed rewards.",
+        parameters: { type: 'object', properties: {}, additionalProperties: false },
+      },
+      {
+        name: 'award_tokens',
+        description:
+          'Award tokens to the student for completing work. Amount must be 1-100. Always provide a reason describing what was accomplished.',
+        parameters: {
+          type: 'object',
+          properties: {
+            amount: { type: 'number', description: 'Number of tokens to award (1-100)' },
+            reason: { type: 'string', description: 'Why the tokens are being awarded' },
+          },
+          required: ['amount', 'reason'],
+          additionalProperties: false,
+        },
+      },
+      {
+        name: 'redeem_reward',
+        description:
+          'Redeem a reward from the catalog using the student\'s tokens. Use get_rewards_catalog first to see available rewards and their IDs.',
+        parameters: {
+          type: 'object',
+          properties: {
+            reward_id: { type: 'string', description: 'The ID of the reward to redeem' },
+          },
+          required: ['reward_id'],
+          additionalProperties: false,
+        },
+      },
+      {
+        name: 'get_transactions',
+        description: "Get the student's recent token transaction history (earns and redemptions).",
+        parameters: { type: 'object', properties: {}, additionalProperties: false },
+      },
+      {
+        name: 'get_rewards_catalog',
+        description:
+          'Get the full list of available rewards with their IDs, names, costs, and descriptions.',
+        parameters: { type: 'object', properties: {}, additionalProperties: false },
+      },
+    ],
+    sandboxPolicy: '',
+    enabled: true,
   },
 ]
 

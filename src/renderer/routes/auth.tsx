@@ -30,8 +30,24 @@ function AuthPage() {
         const secret = (import.meta.env?.VITE_JWT_SECRET as string) || 'treehouse-dev-secret-replace-in-production'
         const encodedSecret = new TextEncoder().encode(secret)
 
+        // Generate a deterministic userId from email
+        let userId: string
+        if (globalThis.crypto?.subtle) {
+          const hashBuf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('treehouse:' + email))
+          const hex = [...new Uint8Array(hashBuf)].map(b => b.toString(16).padStart(2, '0')).join('')
+          userId = `${hex.slice(0,8)}-${hex.slice(8,12)}-4${hex.slice(13,16)}-a${hex.slice(17,20)}-${hex.slice(20,32)}`
+        } else {
+          // Fallback: simple hash for environments without crypto.subtle
+          let h = 0
+          const src = 'treehouse:' + email
+          for (let i = 0; i < src.length; i++) h = ((h << 5) - h + src.charCodeAt(i)) | 0
+          const hex = Math.abs(h).toString(16).padStart(8, '0')
+          userId = `${hex}0000-0000-4000-a000-000000000000`
+        }
+
         const token = await new SignJWT({ email })
           .setProtectedHeader({ alg: 'HS256' })
+          .setSubject(userId)
           .setIssuedAt()
           .setExpirationTime('7d')
           .sign(encodedSecret)

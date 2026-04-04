@@ -6,6 +6,7 @@ const AUTH_TOKEN_KEY = 'treehouse_auth_token'
 
 interface AuthUser {
   email: string
+  userId: string
 }
 
 interface AuthState {
@@ -52,8 +53,8 @@ export async function clearAuthToken(): Promise<void> {
 export async function validateToken(token: string): Promise<AuthUser | null> {
   try {
     const { payload } = await jwtVerify(token, getSecret())
-    if (payload.email && typeof payload.email === 'string') {
-      return { email: payload.email }
+    if (payload.email && typeof payload.email === 'string' && payload.sub) {
+      return { email: payload.email, userId: payload.sub }
     }
     return null
   } catch {

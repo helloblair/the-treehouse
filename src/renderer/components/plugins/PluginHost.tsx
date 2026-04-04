@@ -3,6 +3,7 @@ import { createMessage } from '@shared/types'
 import { validateOrigin } from '@shared/types/plugin'
 import { getDefaultStore } from 'jotai'
 import { currentSessionIdAtom } from '@/stores/atoms'
+import { useAuth } from '@/hooks/useAuth'
 import { clearPluginReady, markPluginReady, resolveToolCall } from '@/stores/pluginBridge'
 import { pluginStore, usePluginStore } from '@/stores/pluginStore'
 import { submitNewUserMessage } from '@/stores/sessionActions'
@@ -11,13 +12,14 @@ export default function PluginHost() {
   const activePluginId = usePluginStore((s) => s.activePluginId)
   const manifests = usePluginStore((s) => s.manifests)
   const manifest = manifests.find((m) => m.id === activePluginId)
+  const { user } = useAuth()
 
   if (!manifest) return null
 
-  return <PluginIframe key={manifest.id} manifest={manifest} />
+  return <PluginIframe key={manifest.id} manifest={manifest} userId={user?.userId} />
 }
 
-function PluginIframe({ manifest }: { manifest: (typeof pluginStore extends { getState: () => infer S } ? S : never)['manifests'][number] }) {
+function PluginIframe({ manifest, userId }: { manifest: (typeof pluginStore extends { getState: () => infer S } ? S : never)['manifests'][number]; userId?: string }) {
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const [ready, setReady] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -56,6 +58,7 @@ function PluginIframe({ manifest }: { manifest: (typeof pluginStore extends { ge
           setLoading(false)
           clearTimeout(loadTimerRef.current)
           markPluginReady(manifest.id)
+
           // Restore cached state if available
           const cached = pluginStore.getState().pluginStates[manifest.id]
           if (cached) {
@@ -110,6 +113,29 @@ function PluginIframe({ manifest }: { manifest: (typeof pluginStore extends { ge
     window.addEventListener('message', handleMessage)
     return () => window.removeEventListener('message', handleMessage)
   }, [handleMessage])
+
+  // Send init messages to plugins that need userId
+  useEffect(() => {
+    if (!ready || !userId) return
+    const initMap: Record<string, string> = {
+      'treehouse-pet': 'init_pet',
+      'treehouse-tokens': 'init_tokens',
+    }
+    const toolName = initMap[manifest.id]
+    if (!toolName) return
+    iframeRef.current?.contentWindow?.postMessage(
+      {
+        type: 'TREEHOUSE_TOOL_CALL',
+        pluginId: manifest.id,
+        payload: {
+          callId: `${toolName}_${Date.now()}`,
+          toolName,
+          params: { userId },
+        },
+      },
+      new URL(manifest.iframeUrl).origin,
+    )
+  }, [manifest.id, manifest.iframeUrl, ready, userId])
 
   // Listen for tool call execution events from stream-text.ts execute functions
   useEffect(() => {
