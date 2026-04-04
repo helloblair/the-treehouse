@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Chess } from 'chess.js'
 import { Chessboard } from 'react-chessboard'
+import { pokemonPieces } from './pokemonPieces'
+import {
+  pokeballSquareStyles,
+  pokeballBoardStyle,
+  pokeballSquareStyle,
+  pokeballDarkSquareStyle,
+  pokeballLightSquareStyle,
+} from './pokemonBoard'
 
 const PLUGIN_ID = 'treehouse-chess'
 const PLATFORM_ORIGIN = import.meta.env.VITE_PLATFORM_ORIGIN || '*'
@@ -220,6 +228,12 @@ function App() {
             position: fen,
             onPieceDrop,
             animationDurationInMs: 200,
+            pieces: pokemonPieces,
+            boardStyle: pokeballBoardStyle,
+            squareStyle: pokeballSquareStyle,
+            squareStyles: pokeballSquareStyles,
+            darkSquareStyle: pokeballDarkSquareStyle,
+            lightSquareStyle: pokeballLightSquareStyle,
           }}
         />
       </div>

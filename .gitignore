@@ -190,4 +190,4 @@ storybook-static
 .claude/worktrees/
 
 # PRD (confidential)
-docs/chatbridge-prd.pdf
+docs/chatbridge-prd.*
