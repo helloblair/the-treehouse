@@ -24,6 +24,7 @@ import {
   type ProviderOptions,
   type StreamTextResult,
 } from '../../../shared/types'
+import { getAuthToken, validateToken } from '@/hooks/useAuth'
 import { registerToolCall, waitForPluginReady } from '@/stores/pluginBridge'
 import { pluginStore } from '@/stores/pluginStore'
 import { mcpController } from '../mcp/controller'
@@ -179,6 +180,23 @@ export async function streamText(
   }
   // TREEHOUSE: plugin hint for image analysis
   toolSetInstructions += '\nWhen a tool returns imageBase64, analyze it visually and describe or critique what you see.\n'
+
+  // TREEHOUSE: inject user role so Claude knows whether to use teacher or student tools
+  try {
+    const authToken = await getAuthToken()
+    if (authToken) {
+      const authUser = await validateToken(authToken)
+      if (authUser?.role) {
+        toolSetInstructions += `\nThe current user's role is: ${authUser.role}. ${
+          authUser.role === 'teacher'
+            ? 'Use teacher tools (create_assignment, get_pending_submissions, approve_submission, reject_submission) to help manage assignments and review student work.'
+            : 'Use student tools (get_my_assignments, submit_assignment) to help with assignments. Never use teacher-only tools.'
+        }\n`
+      }
+    }
+  } catch {
+    // Auth not available — proceed without role context
+  }
 
   params.messages = injectModelSystemPrompt(
     model.modelId,

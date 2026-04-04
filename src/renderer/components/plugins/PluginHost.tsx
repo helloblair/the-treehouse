@@ -165,7 +165,7 @@ function PluginIframe({ manifest, userId, role }: { manifest: (typeof pluginStor
     <div
       style={{
         position: 'relative',
-        width: 420,
+        width: 500,
         flexShrink: 0,
         overflow: 'hidden',
         borderLeft: '1px solid var(--mantine-color-default-border)',

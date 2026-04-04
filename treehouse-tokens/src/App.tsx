@@ -499,14 +499,6 @@ function App() {
       p_student_notes: notes,
     })
     await refreshStudentData(uid)
-    window.parent.postMessage(
-      {
-        type: 'TREEHOUSE_STATE_UPDATE',
-        pluginId: PLUGIN_ID,
-        payload: { state: { wallet: walletRef.current }, userMessage: 'I just submitted an assignment for review!' },
-      },
-      PLATFORM_ORIGIN,
-    )
   }, [refreshStudentData])
 
   const handleRedeem = useCallback(async (reward: Reward) => {

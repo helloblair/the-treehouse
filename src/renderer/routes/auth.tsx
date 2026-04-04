@@ -58,13 +58,17 @@ function AuthPage() {
           userId = `${hex}0000-0000-4000-a000-000000000000`
         }
 
-        // Upsert user profile in Supabase
-        await supabase.from('user_profiles').upsert({
-          user_id: userId,
-          email,
-          display_name: email.split('@')[0],
-          role,
-        }, { onConflict: 'user_id' })
+        // Upsert user profile in Supabase (non-blocking — login works even if this fails)
+        if (supabase) {
+          supabase.from('user_profiles').upsert({
+            user_id: userId,
+            email,
+            display_name: email.split('@')[0],
+            role,
+          }, { onConflict: 'user_id' }).then(({ error: upsertErr }) => {
+            if (upsertErr) console.warn('[treehouse-auth] profile upsert failed:', upsertErr)
+          })
+        }
 
         const token = await new SignJWT({ email, role })
           .setProtectedHeader({ alg: 'HS256' })
@@ -74,6 +78,8 @@ function AuthPage() {
           .sign(encodedSecret)
 
         await setAuthToken(token)
+        // Allow useAuth to pick up the new token before navigating
+        await new Promise((r) => setTimeout(r, 100))
         navigate({ to: '/', replace: true })
       } catch (err) {
         setError('Sign-in failed. Please try again.')
@@ -82,7 +88,7 @@ function AuthPage() {
         setIsSubmitting(false)
       }
     },
-    [email, password, navigate]
+    [email, password, role, teacherCode, navigate]
   )
 
   return (
