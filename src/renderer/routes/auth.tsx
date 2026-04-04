@@ -2,6 +2,7 @@ import { SignJWT } from 'jose'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useCallback, useState } from 'react'
 import { setAuthToken } from '@/hooks/useAuth'
+import { supabase } from '@/lib/supabase'
 
 export const Route = createFileRoute('/auth')({
   component: AuthPage,
@@ -11,6 +12,8 @@ function AuthPage() {
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [role, setRole] = useState<'student' | 'teacher'>('student')
+  const [teacherCode, setTeacherCode] = useState('')
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -22,6 +25,16 @@ function AuthPage() {
       if (!email || !password) {
         setError('Email and password are required.')
         return
+      }
+
+      // Validate teacher code
+      if (role === 'teacher') {
+        // @ts-ignore - import.meta.env is a Vite feature
+        const expectedCode = (import.meta.env?.VITE_TEACHER_CODE as string) || 'oak2026'
+        if (teacherCode !== expectedCode) {
+          setError('Invalid teacher code.')
+          return
+        }
       }
 
       setIsSubmitting(true)
@@ -45,7 +58,15 @@ function AuthPage() {
           userId = `${hex}0000-0000-4000-a000-000000000000`
         }
 
-        const token = await new SignJWT({ email })
+        // Upsert user profile in Supabase
+        await supabase.from('user_profiles').upsert({
+          user_id: userId,
+          email,
+          display_name: email.split('@')[0],
+          role,
+        }, { onConflict: 'user_id' })
+
+        const token = await new SignJWT({ email, role })
           .setProtectedHeader({ alg: 'HS256' })
           .setSubject(userId)
           .setIssuedAt()
@@ -175,6 +196,81 @@ function AuthPage() {
               }}
             />
           </div>
+
+          {/* Role selection */}
+          <div style={{ marginBottom: 16 }}>
+            <label
+              style={{
+                display: 'block',
+                marginBottom: 6,
+                fontSize: 14,
+                fontWeight: 600,
+                color: 'var(--chatbox-tint-primary, #212529)',
+              }}
+            >
+              I am a...
+            </label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {(['student', 'teacher'] as const).map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setRole(r)}
+                  style={{
+                    flex: 1,
+                    padding: '8px 0',
+                    fontSize: 14,
+                    fontWeight: 600,
+                    borderRadius: 8,
+                    border: role === r ? '2px solid var(--chatbox-tint-brand, #228be6)' : '1px solid var(--chatbox-border-primary, #dee2e6)',
+                    background: role === r ? 'var(--chatbox-tint-brand, #228be6)' : 'var(--chatbox-background-primary, #f8f9fa)',
+                    color: role === r ? '#fff' : 'var(--chatbox-tint-primary, #212529)',
+                    cursor: 'pointer',
+                    textTransform: 'capitalize',
+                  }}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Teacher code */}
+          {role === 'teacher' && (
+            <div style={{ marginBottom: 16 }}>
+              <label
+                htmlFor="teacherCode"
+                style={{
+                  display: 'block',
+                  marginBottom: 6,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: 'var(--chatbox-tint-primary, #212529)',
+                }}
+              >
+                Teacher Code
+              </label>
+              <input
+                id="teacherCode"
+                type="text"
+                value={teacherCode}
+                onChange={(e) => setTeacherCode(e.target.value)}
+                placeholder="Enter your teacher code"
+                autoComplete="off"
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  fontSize: 14,
+                  border: '1px solid var(--chatbox-border-primary, #dee2e6)',
+                  borderRadius: 8,
+                  outline: 'none',
+                  background: 'var(--chatbox-background-primary, #f8f9fa)',
+                  color: 'var(--chatbox-tint-primary, #212529)',
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
+          )}
 
           {error && (
             <p

@@ -142,6 +142,7 @@ const defaultPlugins: PluginManifest[] = [
     iframeUrl: 'http://localhost:5177',
     mcpServerUrl: 'http://localhost:5177/mcp',
     tools: [
+      // ── Student tools ──
       {
         name: 'get_wallet',
         description:
@@ -149,16 +150,22 @@ const defaultPlugins: PluginManifest[] = [
         parameters: { type: 'object', properties: {}, additionalProperties: false },
       },
       {
-        name: 'award_tokens',
+        name: 'get_my_assignments',
         description:
-          'Award tokens to the student for completing work. Amount must be 1-100. Always provide a reason describing what was accomplished.',
+          "List the student's active assignments and their submission status (not started, pending, approved, rejected). Use this to help the student see what work they have.",
+        parameters: { type: 'object', properties: {}, additionalProperties: false },
+      },
+      {
+        name: 'submit_assignment',
+        description:
+          'Submit an assignment for teacher review. The student must provide the assignment_id. If rejected previously, this resubmits it. Do NOT try to award tokens — only teachers can approve work.',
         parameters: {
           type: 'object',
           properties: {
-            amount: { type: 'number', description: 'Number of tokens to award (1-100)' },
-            reason: { type: 'string', description: 'Why the tokens are being awarded' },
+            assignment_id: { type: 'string', description: 'The UUID of the assignment to submit' },
+            student_notes: { type: 'string', description: 'Optional notes from the student about their work' },
           },
-          required: ['amount', 'reason'],
+          required: ['assignment_id'],
           additionalProperties: false,
         },
       },
@@ -185,6 +192,58 @@ const defaultPlugins: PluginManifest[] = [
         description:
           'Get the full list of available rewards with their IDs, names, costs, and descriptions.',
         parameters: { type: 'object', properties: {}, additionalProperties: false },
+      },
+      // ── Teacher tools ──
+      {
+        name: 'create_assignment',
+        description:
+          'Create a new assignment for students. Only works for teachers. Requires title, subject, and token_value. Optional: description, due_date (ISO string).',
+        parameters: {
+          type: 'object',
+          properties: {
+            title: { type: 'string', description: 'Assignment title' },
+            description: { type: 'string', description: 'Detailed assignment description' },
+            subject: { type: 'string', description: 'School subject (math, reading, science, writing, art, social studies)' },
+            token_value: { type: 'number', description: 'Tokens awarded on approval (1-100)' },
+            due_date: { type: 'string', description: 'Optional due date as ISO string' },
+          },
+          required: ['title', 'subject', 'token_value'],
+          additionalProperties: false,
+        },
+      },
+      {
+        name: 'get_pending_submissions',
+        description:
+          'Get all student submissions awaiting teacher review. Only works for teachers. Returns student name, assignment title, notes, and submission time.',
+        parameters: { type: 'object', properties: {}, additionalProperties: false },
+      },
+      {
+        name: 'approve_submission',
+        description:
+          'Approve a student submission. Tokens are awarded automatically. Only works for teachers. Requires submission_id.',
+        parameters: {
+          type: 'object',
+          properties: {
+            submission_id: { type: 'string', description: 'The UUID of the submission to approve' },
+            teacher_notes: { type: 'string', description: 'Optional feedback for the student' },
+          },
+          required: ['submission_id'],
+          additionalProperties: false,
+        },
+      },
+      {
+        name: 'reject_submission',
+        description:
+          'Reject a student submission with feedback so they can retry. Only works for teachers.',
+        parameters: {
+          type: 'object',
+          properties: {
+            submission_id: { type: 'string', description: 'The UUID of the submission to reject' },
+            teacher_notes: { type: 'string', description: 'Feedback explaining why it was rejected and what to improve' },
+          },
+          required: ['submission_id'],
+          additionalProperties: false,
+        },
       },
     ],
     sandboxPolicy: '',

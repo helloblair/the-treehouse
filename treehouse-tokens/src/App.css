@@ -1,0 +1,850 @@
+.tokens-app {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  color: #e0e0e0;
+  overflow-y: auto;
+}
+
+.tokens-app.loading {
+  align-items: center;
+  justify-content: center;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(255, 255, 255, 0.15);
+  border-top-color: #ffd700;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Balance header ──────────────────────────────────── */
+
+.balance-header {
+  text-align: center;
+  padding: 20px 16px 12px;
+}
+
+.balance-coin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.coin-icon {
+  font-size: 28px;
+}
+
+.balance-number {
+  font-size: 48px;
+  font-weight: 800;
+  color: #ffd700;
+  transition: transform 0.3s ease;
+}
+
+.balance-number.pop {
+  animation: pop 0.5s ease;
+}
+
+@keyframes pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+
+.balance-label {
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: #a0a0b8;
+  margin-top: -4px;
+}
+
+.lifetime {
+  font-size: 11px;
+  color: #6a6a80;
+  margin-top: 4px;
+}
+
+/* ── Tab bar ─────────────────────────────────────────── */
+
+.tab-bar {
+  display: flex;
+  gap: 4px;
+  padding: 0 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tab-bar button {
+  flex: 1;
+  padding: 8px 0;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #8888a0;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tab-bar button.active {
+  color: #ffd700;
+  border-bottom-color: #ffd700;
+}
+
+.tab-bar button:hover:not(.active) {
+  color: #c0c0d0;
+}
+
+/* ── Tab content ─────────────────────────────────────── */
+
+.tab-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+/* ── Dashboard ───────────────────────────────────────── */
+
+.empty-state {
+  text-align: center;
+  padding: 32px 16px;
+}
+
+.empty-icon {
+  font-size: 40px;
+  display: block;
+  margin-bottom: 12px;
+}
+
+.empty-state p {
+  font-size: 14px;
+  color: #a0a0b8;
+}
+
+.empty-state .hint {
+  font-size: 12px;
+  color: #6a6a80;
+  margin-top: 6px;
+}
+
+.recent-activity h3 {
+  font-size: 13px;
+  font-weight: 600;
+  color: #a0a0b8;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+
+/* ── Transaction rows ────────────────────────────────── */
+
+.tx-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  margin-bottom: 6px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.tx-row:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.tx-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.tx-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.tx-subject {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  background: rgba(255, 215, 0, 0.15);
+  color: #ffd700;
+  margin-bottom: 2px;
+  width: fit-content;
+}
+
+.tx-reason {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tx-time {
+  font-size: 11px;
+  color: #6a6a80;
+}
+
+.tx-amount {
+  font-size: 14px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.tx-amount.earn {
+  color: #4caf50;
+}
+
+.tx-amount.redeem {
+  color: #ff7043;
+}
+
+/* ── Rewards grid ────────────────────────────────────── */
+
+.rewards-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.reward-card {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+  transition: transform 0.15s ease, background 0.2s;
+}
+
+.reward-card:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+.reward-card.locked {
+  opacity: 0.5;
+}
+
+.reward-emoji {
+  font-size: 28px;
+}
+
+.reward-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #e8e8f0;
+}
+
+.reward-desc {
+  font-size: 11px;
+  color: #8888a0;
+  line-height: 1.3;
+}
+
+.reward-cost {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffd700;
+  margin: 2px 0;
+}
+
+.reward-btn {
+  width: 100%;
+  padding: 6px 0;
+  border: none;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s;
+  background: #4a9eff;
+  color: #fff;
+}
+
+.reward-btn:hover:not(:disabled) {
+  background: #3a8eef;
+}
+
+.reward-btn:disabled {
+  background: rgba(255, 255, 255, 0.08);
+  color: #6a6a80;
+  cursor: default;
+}
+
+.reward-btn.owned {
+  background: rgba(76, 175, 80, 0.2);
+  color: #4caf50;
+}
+
+/* ── History list ────────────────────────────────────── */
+
+.tx-list {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Scrollbar ───────────────────────────────────────── */
+
+.tab-content::-webkit-scrollbar {
+  width: 4px;
+}
+
+.tab-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+}
+
+/* ── Type badges ────────────────────────────────────── */
+
+.reward-type-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.reward-type-badge.real {
+  background: rgba(76, 175, 80, 0.2);
+  color: #4caf50;
+}
+
+.reward-type-badge.virtual {
+  background: rgba(74, 158, 255, 0.2);
+  color: #4a9eff;
+}
+
+/* ── Modal ──────────────────────────────────────────── */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal {
+  background: #1e2240;
+  border-radius: 16px;
+  padding: 24px 20px;
+  text-align: center;
+  max-width: 300px;
+  width: 90%;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.modal-emoji {
+  font-size: 48px;
+  display: block;
+  margin-bottom: 12px;
+}
+
+.modal h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #e8e8f0;
+  margin: 0 0 8px;
+}
+
+.modal-desc {
+  font-size: 13px;
+  color: #8888a0;
+  margin: 0 0 12px;
+  line-height: 1.4;
+}
+
+.modal-cost {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffd700;
+  margin: 0 0 16px;
+}
+
+.modal-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.modal-btn {
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.modal-btn.cancel {
+  background: rgba(255, 255, 255, 0.08);
+  color: #a0a0b8;
+}
+
+.modal-btn.cancel:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.modal-btn.confirm {
+  background: #4a9eff;
+  color: #fff;
+}
+
+.modal-btn.confirm:hover {
+  background: #3a8eef;
+}
+
+/* ── Redemption code ────────────────────────────────── */
+
+.redemption-code {
+  font-family: 'Courier New', monospace;
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffd700;
+  background: rgba(255, 215, 0, 0.1);
+  border: 1px dashed rgba(255, 215, 0, 0.3);
+  border-radius: 8px;
+  padding: 10px 16px;
+  margin: 12px 0;
+  letter-spacing: 1px;
+}
+
+.qr-container {
+  display: flex;
+  justify-content: center;
+  margin: 12px 0 16px;
+}
+
+/* ── Assignment cards ──────────────────────────────── */
+
+.assignment-card {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 10px;
+}
+
+.assignment-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.assignment-subject {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: rgba(255, 215, 0, 0.15);
+  color: #ffd700;
+}
+
+.assignment-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #e8e8f0;
+  margin-bottom: 4px;
+}
+
+.assignment-desc {
+  font-size: 12px;
+  color: #8888a0;
+  line-height: 1.4;
+  margin-bottom: 6px;
+}
+
+.assignment-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: #6a6a80;
+  margin-bottom: 8px;
+}
+
+.assignment-reward {
+  color: #ffd700;
+  font-weight: 600;
+}
+
+/* ── Status badges ─────────────────────────────────── */
+
+.badge {
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.badge-neutral { background: rgba(255,255,255,0.08); color: #8888a0; }
+.badge-pending { background: rgba(255,165,0,0.2); color: #ffa500; }
+.badge-approved { background: rgba(76,175,80,0.2); color: #4caf50; }
+.badge-rejected { background: rgba(255,82,82,0.2); color: #ff5252; }
+
+/* ── Submit area ───────────────────────────────────── */
+
+.submit-area {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.submit-input {
+  flex: 1;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  color: #e0e0e0;
+  font-size: 12px;
+  outline: none;
+}
+
+.submit-input:focus {
+  border-color: #4a9eff;
+}
+
+.submit-btn {
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: none;
+  background: #4a9eff;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.submit-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.pending-note {
+  font-size: 12px;
+  color: #ffa500;
+  margin-top: 6px;
+  font-style: italic;
+}
+
+.approved-note {
+  font-size: 12px;
+  color: #4caf50;
+  margin-top: 6px;
+  font-weight: 600;
+}
+
+.teacher-feedback {
+  font-size: 12px;
+  color: #ff5252;
+  background: rgba(255,82,82,0.1);
+  padding: 6px 10px;
+  border-radius: 8px;
+  margin-top: 6px;
+}
+
+/* ── Teacher dashboard ─────────────────────────────── */
+
+.teacher-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 16px 10px;
+}
+
+.teacher-icon { font-size: 24px; }
+
+.teacher-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #e8e8f0;
+}
+
+.review-badge {
+  background: #ff5252;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 10px;
+}
+
+.new-assignment-btn {
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  border: 2px dashed rgba(255,255,255,0.15);
+  background: none;
+  color: #4a9eff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-bottom: 12px;
+  transition: border-color 0.2s;
+}
+
+.new-assignment-btn:hover {
+  border-color: #4a9eff;
+}
+
+/* ── Assignment form ───────────────────────────────── */
+
+.assignment-form {
+  background: rgba(255,255,255,0.06);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-input {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  color: #e0e0e0;
+  font-size: 13px;
+  outline: none;
+}
+
+.form-input:focus { border-color: #4a9eff; }
+
+.form-textarea {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  color: #e0e0e0;
+  font-size: 13px;
+  outline: none;
+  resize: vertical;
+}
+
+.form-row {
+  display: flex;
+  gap: 8px;
+}
+
+.form-select {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  color: #e0e0e0;
+  font-size: 13px;
+  outline: none;
+}
+
+.token-input-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.form-input-small {
+  width: 60px;
+  padding: 8px 6px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  color: #ffd700;
+  font-size: 13px;
+  font-weight: 700;
+  outline: none;
+  text-align: center;
+}
+
+.create-btn {
+  padding: 10px;
+  border-radius: 8px;
+  border: none;
+  background: #4caf50;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.create-btn:disabled { opacity: 0.5; cursor: default; }
+
+/* ── Review cards ──────────────────────────────────── */
+
+.review-card {
+  background: rgba(255,255,255,0.06);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 10px;
+}
+
+.review-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.review-student {
+  font-size: 14px;
+  font-weight: 700;
+  color: #e8e8f0;
+}
+
+.review-time {
+  font-size: 11px;
+  color: #6a6a80;
+}
+
+.review-assignment {
+  font-size: 13px;
+  color: #a0a0b8;
+  margin-bottom: 4px;
+}
+
+.review-meta {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.review-notes {
+  font-size: 12px;
+  color: #8888a0;
+  background: rgba(255,255,255,0.04);
+  padding: 6px 10px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.review-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.approve-btn {
+  flex: 1;
+  padding: 8px;
+  border-radius: 8px;
+  border: none;
+  background: #4caf50;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.approve-btn:disabled { opacity: 0.5; cursor: default; }
+
+.reject-btn {
+  flex: 1;
+  padding: 8px;
+  border-radius: 8px;
+  border: none;
+  background: rgba(255,82,82,0.2);
+  color: #ff5252;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.reject-btn:disabled { opacity: 0.5; cursor: default; }
+
+/* ── Student overview (teacher) ────────────────────── */
+
+.student-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  margin-bottom: 6px;
+  background: rgba(255,255,255,0.04);
+}
+
+.student-rank {
+  font-size: 13px;
+  font-weight: 700;
+  color: #6a6a80;
+  width: 28px;
+}
+
+.student-name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  color: #e8e8f0;
+}
+
+.student-balance {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffd700;
+}
+
+/* ── Leaderboard ───────────────────────────────────── */
+
+.leaderboard-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  margin-bottom: 6px;
+  background: rgba(255,255,255,0.04);
+}
+
+.lb-rank {
+  font-size: 18px;
+  width: 32px;
+  text-align: center;
+}
+
+.lb-name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  color: #e8e8f0;
+}
+
+.lb-tokens {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffd700;
+}
+
+.teacher-card {
+  border-left: 3px solid #4a9eff;
+}

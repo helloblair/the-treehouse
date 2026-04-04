@@ -16,10 +16,10 @@ export default function PluginHost() {
 
   if (!manifest) return null
 
-  return <PluginIframe key={manifest.id} manifest={manifest} userId={user?.userId} />
+  return <PluginIframe key={manifest.id} manifest={manifest} userId={user?.userId} role={user?.role} />
 }
 
-function PluginIframe({ manifest, userId }: { manifest: (typeof pluginStore extends { getState: () => infer S } ? S : never)['manifests'][number]; userId?: string }) {
+function PluginIframe({ manifest, userId, role }: { manifest: (typeof pluginStore extends { getState: () => infer S } ? S : never)['manifests'][number]; userId?: string; role?: string }) {
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const [ready, setReady] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -130,7 +130,7 @@ function PluginIframe({ manifest, userId }: { manifest: (typeof pluginStore exte
         payload: {
           callId: `${toolName}_${Date.now()}`,
           toolName,
-          params: { userId },
+          params: { userId, role: role ?? 'student' },
         },
       },
       new URL(manifest.iframeUrl).origin,

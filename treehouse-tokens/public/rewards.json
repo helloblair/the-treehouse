@@ -1,0 +1,9 @@
+[
+  { "id": "pizza-slice", "name": "Pizza Slice", "type": "real", "cost": 100, "description": "One slice from Vinnie's Pizza", "redemption_code": "TREEHOUSE-PIZZA-2026", "emoji": "🍕" },
+  { "id": "boba-drink", "name": "Boba Drink", "type": "real", "cost": 150, "description": "Any size boba from TeaHouse", "redemption_code": "TREEHOUSE-BOBA-2026", "emoji": "🧋" },
+  { "id": "bookstore-card", "name": "$5 Bookstore Card", "type": "real", "cost": 300, "description": "$5 credit at the school bookstore", "redemption_code": "TREEHOUSE-BOOK-2026", "emoji": "📚" },
+  { "id": "pet-bowtie", "name": "Bow Tie for your pet", "type": "virtual", "cost": 50, "description": "A fancy bow tie accessory", "emoji": "🎀" },
+  { "id": "pet-crown", "name": "Crown for your pet", "type": "virtual", "cost": 50, "description": "A royal crown accessory", "emoji": "👑" },
+  { "id": "chat-theme-dark", "name": "Dark Theme Unlock", "type": "virtual", "cost": 75, "description": "Unlocks a dark mode theme for the chat", "emoji": "🌙" },
+  { "id": "bonus-multiplier", "name": "Token Multiplier (1 day)", "type": "virtual", "cost": 200, "description": "Earn 2x tokens for 24 hours", "emoji": "⚡" }
+]
