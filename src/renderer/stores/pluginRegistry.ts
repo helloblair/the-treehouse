@@ -105,7 +105,7 @@ const defaultPlugins: PluginManifest[] = [
       {
         name: 'complete_task',
         description:
-          'Award XP to the pet for the student completing a learning task (+20 XP, +10 happiness). Call this when the student finishes homework, answers correctly, or completes an activity. The pet evolves at 100 XP (junior) and 300 XP (adult). Returns whether the pet evolved.',
+          'Award XP to the pet for the student completing a learning task (+20 XP, +10 happiness). Only call this when the pet plugin is currently active and the student tells their pet about finishing work. Do NOT call this alongside award_tokens — let the student decide which plugin to visit. The pet evolves at 100 XP (junior) and 300 XP (adult). Returns whether the pet evolved.',
         parameters: { type: 'object', properties: {}, additionalProperties: false },
       },
       {
