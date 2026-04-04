@@ -188,3 +188,6 @@ storybook-static
 .gstack/
 .worktrees/
 .claude/worktrees/
+
+# PRD (confidential)
+docs/chatbridge-prd.pdf
