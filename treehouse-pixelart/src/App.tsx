@@ -70,19 +70,24 @@ function getBase64(grid: string[], size: number): string | null {
   }
 }
 
-function getMiniBase64(grid: string[], size: number): string {
-  const scale = 3
-  const canvas = document.createElement('canvas')
-  canvas.width = size * scale
-  canvas.height = size * scale
-  const ctx = canvas.getContext('2d')!
-  for (let i = 0; i < grid.length; i++) {
-    const x = i % size
-    const y = Math.floor(i / size)
-    ctx.fillStyle = grid[i]
-    ctx.fillRect(x * scale, y * scale, scale, scale)
+function getMiniBase64(grid: string[], size: number): string | null {
+  try {
+    const scale = 3
+    const canvas = document.createElement('canvas')
+    canvas.width = size * scale
+    canvas.height = size * scale
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return null
+    for (let i = 0; i < grid.length; i++) {
+      const x = i % size
+      const y = Math.floor(i / size)
+      ctx.fillStyle = grid[i]
+      ctx.fillRect(x * scale, y * scale, scale, scale)
+    }
+    return canvas.toDataURL('image/png')
+  } catch {
+    return null
   }
-  return canvas.toDataURL('image/png')
 }
 
 const COLOR_SYMBOLS: Record<string, string> = {
@@ -164,12 +169,15 @@ function App() {
   const [redoStack, setRedoStack] = useState<string[][]>([])
 
   const gridRef = useRef(grid)
-  gridRef.current = grid
   const sizeRef = useRef(size)
-  sizeRef.current = size
   const paletteRef = useRef(palette)
-  paletteRef.current = palette
   const restoredRef = useRef(false)
+
+  useEffect(() => {
+    gridRef.current = grid
+    sizeRef.current = size
+    paletteRef.current = palette
+  }, [grid, size, palette])
 
   // Push current grid to undo stack before a change
   const pushUndo = useCallback((prevGrid: string[]) => {
@@ -396,10 +404,11 @@ function App() {
   }, [])
 
   // Generate mini thumbnails for history display
-  const historyThumbnails = undoStack.slice(-8).map((g, i) => ({
-    key: undoStack.length - 8 + i,
-    src: getMiniBase64(g, size),
-  }))
+  const historyThumbnails = undoStack.slice(-8).flatMap((g, i) => {
+    const src = getMiniBase64(g, size)
+    if (!src) return []
+    return [{ key: undoStack.length - 8 + i, src }]
+  })
 
   const cellSize = size <= 16 ? 20 : 12
   const gridPx = size * cellSize
