@@ -38,19 +38,36 @@ function sendResult(callId: string, result: unknown, isError = false) {
   )
 }
 
-function getBase64(grid: string[], size: number): string {
-  const scale = 10
-  const canvas = document.createElement('canvas')
-  canvas.width = size * scale
-  canvas.height = size * scale
-  const ctx = canvas.getContext('2d')!
-  for (let i = 0; i < grid.length; i++) {
-    const x = i % size
-    const y = Math.floor(i / size)
-    ctx.fillStyle = grid[i]
-    ctx.fillRect(x * scale, y * scale, scale, scale)
+function sendError(message: string, fatal: boolean) {
+  window.parent.postMessage(
+    {
+      type: 'TREEHOUSE_ERROR',
+      pluginId: PLUGIN_ID,
+      payload: { message, fatal },
+    },
+    PLATFORM_ORIGIN,
+  )
+}
+
+function getBase64(grid: string[], size: number): string | null {
+  try {
+    const scale = 10
+    const canvas = document.createElement('canvas')
+    canvas.width = size * scale
+    canvas.height = size * scale
+    const ctx = canvas.getContext('2d')!
+    for (let i = 0; i < grid.length; i++) {
+      const x = i % size
+      const y = Math.floor(i / size)
+      ctx.fillStyle = grid[i]
+      ctx.fillRect(x * scale, y * scale, scale, scale)
+    }
+    return canvas.toDataURL('image/png')
+  } catch (err) {
+    console.error('[treehouse-pixelart] Canvas capture failed:', err)
+    sendError("Couldn't capture the canvas. Try a different browser.", false)
+    return null
   }
-  return canvas.toDataURL('image/png')
 }
 
 function getMiniBase64(grid: string[], size: number): string {
@@ -266,7 +283,11 @@ function App() {
         const imageBase64 = getBase64(currentGrid, currentSize)
         const textGrid = getTextGrid(currentGrid, currentSize)
         const legend = getColorLegend(currentGrid)
-        sendResult(callId, { imageBase64, textGrid, legend, width: currentSize, height: currentSize })
+        if (imageBase64 === null) {
+          sendResult(callId, { error: "Couldn't capture the canvas image, but here is the text grid.", textGrid, legend, width: currentSize, height: currentSize }, true)
+        } else {
+          sendResult(callId, { imageBase64, textGrid, legend, width: currentSize, height: currentSize })
+        }
         break
       }
       case 'clear_canvas': {
