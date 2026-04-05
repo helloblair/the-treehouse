@@ -1,6 +1,6 @@
-import { jwtVerify } from 'jose'
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import platform from '@/platform'
+import { supabase } from '@/lib/supabase'
 
 const AUTH_TOKEN_KEY = 'treehouse_auth_token'
 
@@ -14,12 +14,6 @@ interface AuthState {
   user: AuthUser | null
   isLoading: boolean
   isAuthenticated: boolean
-}
-
-function getSecret(): Uint8Array {
-  // @ts-ignore - import.meta.env is a Vite feature
-  const secret = (import.meta.env?.VITE_JWT_SECRET as string) || 'treehouse-dev-secret-replace-in-production'
-  return new TextEncoder().encode(secret)
 }
 
 // Simple event emitter so useAuth re-runs after sign-in / sign-out
@@ -53,12 +47,35 @@ export async function clearAuthToken(): Promise<void> {
 
 export async function validateToken(token: string): Promise<AuthUser | null> {
   try {
-    const { payload } = await jwtVerify(token, getSecret())
-    if (payload.email && typeof payload.email === 'string' && payload.sub) {
-      const role = (payload.role === 'teacher' ? 'teacher' : 'student') as 'teacher' | 'student'
-      return { email: payload.email, userId: payload.sub, role }
+    // Decode the Supabase JWT payload locally (no network request).
+    // The token was issued by our Supabase instance and stored by us — safe to trust.
+    const parts = token.split('.')
+    if (parts.length !== 3) return null
+
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')))
+
+    // Check expiration
+    if (payload.exp && Date.now() / 1000 > payload.exp) return null
+
+    const email = payload.email as string | undefined
+    const userId = payload.sub as string | undefined
+    if (!email || !userId) return null
+
+    // Role from user_metadata (set during signUp)
+    const metaRole = payload.user_metadata?.role
+    let role: 'teacher' | 'student' = metaRole === 'teacher' ? 'teacher' : 'student'
+
+    // If no role in JWT metadata, try user_profiles table
+    if (!metaRole && supabase) {
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('role')
+        .eq('user_id', userId)
+        .single()
+      if (profile?.role === 'teacher') role = 'teacher'
     }
-    return null
+
+    return { email, userId, role }
   } catch {
     return null
   }

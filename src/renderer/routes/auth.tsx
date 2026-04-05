@@ -1,4 +1,3 @@
-import { SignJWT } from 'jose'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useCallback, useState } from 'react'
 import { setAuthToken } from '@/hooks/useAuth'
@@ -39,50 +38,70 @@ function AuthPage() {
 
       setIsSubmitting(true)
       try {
-        // @ts-ignore - import.meta.env is a Vite feature
-        const secret = (import.meta.env?.VITE_JWT_SECRET as string) || 'treehouse-dev-secret-replace-in-production'
-        const encodedSecret = new TextEncoder().encode(secret)
+        // Attempt sign-in first
+        const { data: signInData, error: signInError } = await supabase!.auth.signInWithPassword({
+          email,
+          password,
+        })
 
-        // Generate a deterministic userId from email
-        let userId: string
-        if (globalThis.crypto?.subtle) {
-          const hashBuf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('treehouse:' + email))
-          const hex = [...new Uint8Array(hashBuf)].map(b => b.toString(16).padStart(2, '0')).join('')
-          userId = `${hex.slice(0,8)}-${hex.slice(8,12)}-4${hex.slice(13,16)}-a${hex.slice(17,20)}-${hex.slice(20,32)}`
-        } else {
-          // Fallback: simple hash for environments without crypto.subtle
-          let h = 0
-          const src = 'treehouse:' + email
-          for (let i = 0; i < src.length; i++) h = ((h << 5) - h + src.charCodeAt(i)) | 0
-          const hex = Math.abs(h).toString(16).padStart(8, '0')
-          userId = `${hex}0000-0000-4000-a000-000000000000`
-        }
+        let session = signInData?.session
 
-        // Upsert user profile in Supabase (non-blocking — login works even if this fails)
-        if (supabase) {
-          supabase.from('user_profiles').upsert({
-            user_id: userId,
+        // If user does not exist, sign them up
+        if (signInError?.message?.toLowerCase().includes('invalid login credentials') ||
+            signInError?.message?.toLowerCase().includes('user not found')) {
+          const { data: signUpData, error: signUpError } = await supabase!.auth.signUp({
             email,
-            display_name: email.split('@')[0],
-            role,
-          }, { onConflict: 'user_id' }).then(({ error: upsertErr }) => {
-            if (upsertErr) console.warn('[treehouse-auth] profile upsert failed:', upsertErr)
+            password,
+            options: {
+              data: { role, display_name: email.split('@')[0] }
+            }
           })
+          // "User already registered" means the sign-in password was wrong, not that the user is new
+          if (signUpError) {
+            if (signUpError.message?.toLowerCase().includes('already registered')) {
+              throw new Error('Invalid email or password.')
+            }
+            throw signUpError
+          }
+
+          // If email confirmation is required, signUp returns a user but no session
+          if (signUpData?.user && !signUpData?.session) {
+            // User was created but needs to confirm — auto sign-in won't work yet.
+            // For dev/classroom use, try signing in immediately (works when
+            // "Confirm email" is disabled in Supabase Auth settings).
+            const { data: retryData, error: retryError } = await supabase!.auth.signInWithPassword({
+              email,
+              password,
+            })
+            if (retryError) throw retryError
+            session = retryData?.session
+          } else {
+            session = signUpData?.session
+          }
         }
 
-        const token = await new SignJWT({ email, role })
-          .setProtectedHeader({ alg: 'HS256' })
-          .setSubject(userId)
-          .setIssuedAt()
-          .setExpirationTime('7d')
-          .sign(encodedSecret)
+        if (signInError && !session) throw signInError
+        if (!session) throw new Error('No session returned — check Supabase email confirmation settings')
 
-        await setAuthToken(token)
+        // Store the Supabase access token — useAuth reads this
+        await setAuthToken(session.access_token)
+
+        // Upsert user profile with role (non-blocking)
+        supabase!.from('user_profiles').upsert({
+          user_id: session.user.id,
+          email,
+          display_name: email.split('@')[0],
+          role,
+        }, { onConflict: 'user_id' }).then(({ error: upsertErr }) => {
+          if (upsertErr) console.warn('[treehouse-auth] profile upsert failed:', upsertErr)
+        })
+
         // Allow useAuth to pick up the new token before navigating
         await new Promise((r) => setTimeout(r, 100))
         navigate({ to: '/', replace: true })
       } catch (err) {
-        setError('Sign-in failed. Please try again.')
+        const msg = err instanceof Error ? err.message : 'Sign-in failed. Please try again.'
+        setError(msg)
         console.error('Auth error:', err)
       } finally {
         setIsSubmitting(false)
