@@ -351,20 +351,24 @@ function App() {
           sendResult(callId, { error: `Unknown reward: ${rewardId}` }, true)
           break
         }
+        // Client-side guard (secondary safety — server RPC is authoritative)
+        if (walletRef.current.balance < reward.cost) {
+          sendResult(callId, { error: `Not enough tokens. Need ${reward.cost}, have ${walletRef.current.balance}.` }, true)
+          break
+        }
         try {
-          const currentWallet = await fetchWallet(uid)
-          if (currentWallet.balance < reward.cost) {
-            sendResult(callId, { error: `Not enough tokens. Need ${reward.cost}, have ${currentWallet.balance}.` }, true)
+          const { data, error } = await supabase.rpc('redeem_reward', {
+            p_user_id: uid,
+            p_reward_id: reward.id,
+            p_reward_name: reward.name,
+            p_cost: reward.cost,
+          })
+          if (error) throw error
+          const result = data as Record<string, unknown>
+          if (result.error) {
+            sendResult(callId, { error: result.error as string }, true)
             break
           }
-          await supabase.from('token_transactions').insert({
-            user_id: uid, type: 'redeem', amount: reward.cost,
-            reason: `Redeemed: ${reward.name}`, reward_id: reward.id,
-          })
-          await supabase.from('token_wallets').update({
-            balance: currentWallet.balance - reward.cost,
-            redeemed_rewards: [...currentWallet.redeemed_rewards, reward.id],
-          }).eq('user_id', uid)
           await refreshStudentData(uid)
           sendResult(callId, { success: true, redeemed: reward.name, cost: reward.cost, new_balance: walletRef.current.balance })
         } catch (err) {
@@ -503,25 +507,34 @@ function App() {
 
   const handleRedeem = useCallback(async (reward: Reward) => {
     const uid = userIdRef.current
+    // Client-side balance guard
     if (!uid || walletRef.current.balance < reward.cost) return
-    await supabase.from('token_transactions').insert({
-      user_id: uid, type: 'redeem', amount: reward.cost,
-      reason: `Redeemed: ${reward.name}`, reward_id: reward.id,
-    })
-    await supabase.from('token_wallets').update({
-      balance: walletRef.current.balance - reward.cost,
-      redeemed_rewards: [...walletRef.current.redeemed_rewards, reward.id],
-    }).eq('user_id', uid)
-    await refreshStudentData(uid)
-    if (reward.type === 'virtual') fireConfetti()
-    window.parent.postMessage(
-      {
-        type: 'TREEHOUSE_STATE_UPDATE',
-        pluginId: PLUGIN_ID,
-        payload: { state: { wallet: walletRef.current }, userMessage: `I just redeemed "${reward.name}" for ${reward.cost} tokens!` },
-      },
-      PLATFORM_ORIGIN,
-    )
+    try {
+      const { data, error } = await supabase.rpc('redeem_reward', {
+        p_user_id: uid,
+        p_reward_id: reward.id,
+        p_reward_name: reward.name,
+        p_cost: reward.cost,
+      })
+      if (error) throw error
+      const result = data as Record<string, unknown>
+      if (result.error) {
+        console.warn('[treehouse-tokens] Redeem failed:', result.error)
+        return
+      }
+      await refreshStudentData(uid)
+      if (reward.type === 'virtual') fireConfetti()
+      window.parent.postMessage(
+        {
+          type: 'TREEHOUSE_STATE_UPDATE',
+          pluginId: PLUGIN_ID,
+          payload: { state: { wallet: walletRef.current }, userMessage: `I just redeemed "${reward.name}" for ${reward.cost} tokens!` },
+        },
+        PLATFORM_ORIGIN,
+      )
+    } catch (err) {
+      console.error('[treehouse-tokens] Redeem error:', err)
+    }
   }, [refreshStudentData])
 
   const handleCreateAssignment = useCallback(async (data: {
