@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { clearPluginReady, markPluginReady, resolveToolCall } from '@/stores/pluginBridge'
 import { pluginStore, usePluginStore } from '@/stores/pluginStore'
 import { submitNewUserMessage } from '@/stores/sessionActions'
+import { loadPluginState, savePluginState } from '@/lib/pluginPersistence'
 
 export default function PluginHost() {
   const activePluginId = usePluginStore((s) => s.activePluginId)
@@ -18,6 +19,9 @@ export default function PluginHost() {
 
   return <PluginIframe key={manifest.id} manifest={manifest} userId={user?.userId} role={user?.role} />
 }
+
+// Plugins that manage their own Supabase persistence (pet, tokens) don't need parent-side persistence.
+const SELF_PERSISTED_PLUGINS = new Set(['treehouse-pet', 'treehouse-tokens'])
 
 function PluginIframe({ manifest, userId, role }: { manifest: (typeof pluginStore extends { getState: () => infer S } ? S : never)['manifests'][number]; userId?: string; role?: string }) {
   const iframeRef = useRef<HTMLIFrameElement>(null)
@@ -69,7 +73,7 @@ function PluginIframe({ manifest, userId, role }: { manifest: (typeof pluginStor
           clearTimeout(loadTimerRef.current)
           markPluginReady(manifest.id)
 
-          // Restore cached state if available
+          // Restore state: prefer in-memory cache, then Supabase for cross-session persistence
           const cached = pluginStore.getState().pluginStates[manifest.id]
           if (cached) {
             iframeRef.current?.contentWindow?.postMessage(
@@ -80,6 +84,23 @@ function PluginIframe({ manifest, userId, role }: { manifest: (typeof pluginStor
               },
               new URL(manifest.iframeUrl).origin,
             )
+          } else if (userId && !SELF_PERSISTED_PLUGINS.has(manifest.id)) {
+            // No memory cache — try loading from Supabase (cross-session restore)
+            void loadPluginState(userId, manifest.id).then((persisted) => {
+              if (!persisted) return
+              // If a STATE_UPDATE arrived while we were loading, the in-memory cache
+              // is now newer than what Supabase returned — don't clobber it.
+              if (pluginStore.getState().pluginStates[manifest.id]) return
+              pluginStore.getState().cachePluginState(manifest.id, persisted)
+              iframeRef.current?.contentWindow?.postMessage(
+                {
+                  type: 'TREEHOUSE_RESTORE_STATE',
+                  pluginId: manifest.id,
+                  payload: { state: persisted },
+                },
+                new URL(manifest.iframeUrl).origin,
+              )
+            })
           }
           break
         }
@@ -118,6 +139,10 @@ function PluginIframe({ manifest, userId, role }: { manifest: (typeof pluginStor
         }
         case 'TREEHOUSE_STATE_UPDATE': {
           pluginStore.getState().cachePluginState(manifest.id, data.payload?.state)
+          // Persist to Supabase for cross-session restore (debounced)
+          if (userId && !SELF_PERSISTED_PLUGINS.has(manifest.id) && data.payload?.state) {
+            savePluginState(userId, manifest.id, data.payload.state)
+          }
           // If the plugin sent a userMessage (e.g. confirm move), auto-submit it
           if (data.payload?.userMessage) {
             const sessionId = getDefaultStore().get(currentSessionIdAtom)
@@ -130,7 +155,7 @@ function PluginIframe({ manifest, userId, role }: { manifest: (typeof pluginStor
         }
       }
     },
-    [manifest],
+    [manifest, userId],
   )
 
   useEffect(() => {
