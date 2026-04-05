@@ -159,7 +159,7 @@ export default function PetView({ pet, onPetUpdate }: PetViewProps) {
       setDisplayPet(merged)
       setMood(getMood(merged))
 
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('pets')
         .update({
           hunger: merged.hunger,
@@ -169,8 +169,12 @@ export default function PetView({ pet, onPetUpdate }: PetViewProps) {
         })
         .eq('id', pet.id)
         .select()
-        .single()
+        .maybeSingle()
 
+      if (error) {
+        console.warn('[treehouse-pet] syncDecay failed:', error)
+        return
+      }
       if (data) {
         onPetUpdate(data as Pet)
         recalcDisplay(data as Pet)
@@ -198,15 +202,21 @@ export default function PetView({ pet, onPetUpdate }: PetViewProps) {
     setTimeout(() => setMoodOverride(null), ms)
   }
 
-  function startCooldown(key: 'feed' | 'play' | 'pet', ms: number) {
+  function startCooldown(key: 'feed' | 'play' | 'pet' | 'bath', ms: number) {
     setCooldowns((prev) => ({ ...prev, [key]: true }))
     setTimeout(() => setCooldowns((prev) => ({ ...prev, [key]: false })), ms)
   }
 
-  function bumpUsage(key: 'feed' | 'play' | 'pet') {
+  function bumpUsage(key: 'feed' | 'play' | 'pet' | 'bath') {
     const updated = { ...dailyUsage, [key]: dailyUsage[key] + 1 }
     setDailyUsage(updated)
     saveDailyUsage(updated)
+  }
+
+  function revertUsage(key: 'feed' | 'play' | 'pet' | 'bath') {
+    const reverted = { ...dailyUsage, [key]: Math.max(0, dailyUsage[key] - 1) }
+    setDailyUsage(reverted)
+    saveDailyUsage(reverted)
   }
 
   async function handleFeed() {
@@ -216,9 +226,9 @@ export default function PetView({ pet, onPetUpdate }: PetViewProps) {
     bumpUsage('feed')
 
     const newHunger = Math.min(100, displayPet.hunger + reward)
-    const newHealth = Math.min(100, displayPet.health + Math.max(1, Math.floor(reward / 5)))
+    const newHealth = Math.min(100, displayPet.health + 5 + Math.max(1, Math.floor(reward / 5)))
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('pets')
       .update({
         hunger: newHunger,
@@ -229,11 +239,14 @@ export default function PetView({ pet, onPetUpdate }: PetViewProps) {
       .select()
       .single()
 
-    if (data) {
-      onPetUpdate(data as Pet)
-      recalcDisplay(data as Pet)
-      flashMood('happy', 2000)
+    if (error || !data) {
+      console.warn('[treehouse-pet] feed failed:', error)
+      revertUsage('feed')
+      return
     }
+    onPetUpdate(data as Pet)
+    recalcDisplay(data as Pet)
+    flashMood('happy', 2000)
   }
 
   async function handlePlay() {
@@ -244,7 +257,7 @@ export default function PetView({ pet, onPetUpdate }: PetViewProps) {
 
     const newHappiness = Math.min(100, displayPet.happiness + reward)
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('pets')
       .update({
         happiness: newHappiness,
@@ -254,11 +267,14 @@ export default function PetView({ pet, onPetUpdate }: PetViewProps) {
       .select()
       .single()
 
-    if (data) {
-      onPetUpdate(data as Pet)
-      recalcDisplay(data as Pet)
-      flashMood('ecstatic', 3000)
+    if (error || !data) {
+      console.warn('[treehouse-pet] play failed:', error)
+      revertUsage('play')
+      return
     }
+    onPetUpdate(data as Pet)
+    recalcDisplay(data as Pet)
+    flashMood('ecstatic', 3000)
   }
 
   async function handlePet() {
@@ -270,7 +286,7 @@ export default function PetView({ pet, onPetUpdate }: PetViewProps) {
     const newHappiness = Math.min(100, displayPet.happiness + reward)
     const newHealth = Math.min(100, displayPet.health + Math.max(1, Math.floor(reward / 3)))
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('pets')
       .update({
         happiness: newHappiness,
@@ -280,11 +296,14 @@ export default function PetView({ pet, onPetUpdate }: PetViewProps) {
       .select()
       .single()
 
-    if (data) {
-      onPetUpdate(data as Pet)
-      recalcDisplay(data as Pet)
-      flashMood('happy', 1500)
+    if (error || !data) {
+      console.warn('[treehouse-pet] pet failed:', error)
+      revertUsage('pet')
+      return
     }
+    onPetUpdate(data as Pet)
+    recalcDisplay(data as Pet)
+    flashMood('happy', 1500)
   }
 
   async function handleBath() {
@@ -294,9 +313,9 @@ export default function PetView({ pet, onPetUpdate }: PetViewProps) {
     bumpUsage('bath')
 
     const newHappiness = Math.min(100, displayPet.happiness + reward)
-    const newHealth = Math.min(100, displayPet.health + 5)
+    const newHealth = Math.min(100, displayPet.health + 10)
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('pets')
       .update({
         happiness: newHappiness,
@@ -307,11 +326,14 @@ export default function PetView({ pet, onPetUpdate }: PetViewProps) {
       .select()
       .single()
 
-    if (data) {
-      onPetUpdate(data as Pet)
-      recalcDisplay(data as Pet)
-      flashMood('ecstatic', 2000)
+    if (error || !data) {
+      console.warn('[treehouse-pet] bath failed:', error)
+      revertUsage('bath')
+      return
     }
+    onPetUpdate(data as Pet)
+    recalcDisplay(data as Pet)
+    flashMood('ecstatic', 2000)
   }
 
   const feedReward = getReward(FEED_REWARDS, dailyUsage.feed)
@@ -322,7 +344,8 @@ export default function PetView({ pet, onPetUpdate }: PetViewProps) {
   const activeMood = moodOverride ?? mood
 
   // Pet is off playing — all care used up for the day
-  if (allUsedUp && !moodOverride) {
+  const negativeMoods: Mood[] = ['sick', 'stinky', 'sleeping', 'hungry']
+  if (allUsedUp && !moodOverride && !negativeMoods.includes(activeMood)) {
     return (
       <div style={{ padding: 20, textAlign: 'center' }}>
         <div style={{ width: 195, height: 195, margin: '0 auto 14px', overflow: 'hidden', position: 'relative' }}>
@@ -441,6 +464,7 @@ export default function PetView({ pet, onPetUpdate }: PetViewProps) {
         <StatBar label="Hunger" value={displayPet.hunger} color={STAT_COLORS.hunger} />
         <StatBar label="Happiness" value={displayPet.happiness} color={STAT_COLORS.happiness} />
         <StatBar label="Health" value={displayPet.health} color={STAT_COLORS.health} />
+        <StatBar label="Cleanliness" value={Math.max(0, Math.round(100 - ((Date.now() - new Date(displayPet.last_bathed_at).getTime()) / 3600000) * (100 / 8)))} color={STAT_COLORS.cleanliness} />
       </div>
     </div>
   )

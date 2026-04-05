@@ -85,7 +85,7 @@ async function fetchPetFromDb(uid: string): Promise<Pet | null> {
       .select('*')
       .eq('user_id', uid)
       .limit(1)
-      .single()
+      .maybeSingle()
     if (error) throw error
     if (data) {
       cachePetToLocal(data as Pet)
@@ -138,6 +138,10 @@ function App() {
     } catch (err) {
       console.warn('[treehouse-pet] Supabase write failed, queuing for retry:', err)
       pendingWritesRef.current.push({ table: 'pets', id: petId, updates })
+      if (!petRef.current) {
+        setSaving(false)
+        return null
+      }
       // Optimistically update local state and cache
       const optimistic = { ...petRef.current, ...updates } as Pet
       cachePetToLocal(optimistic)

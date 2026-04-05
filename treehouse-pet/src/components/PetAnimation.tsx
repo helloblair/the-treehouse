@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { useRive, type UseRiveParameters } from '@rive-app/react-canvas'
 import type { Pet, Mood } from '../types'
 
 interface PetAnimationProps {
@@ -7,40 +6,100 @@ interface PetAnimationProps {
   mood: Mood
 }
 
+const SHIMMER_STYLE_ID = 'pet-video-shimmer'
+
+function ensureShimmerStyle() {
+  if (document.getElementById(SHIMMER_STYLE_ID)) return
+  const style = document.createElement('style')
+  style.id = SHIMMER_STYLE_ID
+  style.textContent = `
+    @keyframes pet-shimmer {
+      0% { background-position: -300px 0; }
+      100% { background-position: 300px 0; }
+    }
+  `
+  document.head.appendChild(style)
+}
+
 export default function PetAnimation({ petType, mood }: PetAnimationProps) {
+  const [videoError, setVideoError] = useState(false)
+  const [videoLoaded, setVideoLoaded] = useState(false)
+  const [opacity, setOpacity] = useState(1)
   const prevMoodRef = useRef(mood)
 
-  const riveParams: UseRiveParameters = {
-    src: `/${petType}.riv`,
-    stateMachines: 'PetMood',
-    autoplay: true,
-  }
-
-  const { rive, RiveComponent } = useRive(riveParams)
-  const riveLoaded = rive !== null
+  // Crossfade on mood change
+  useEffect(() => {
+    if (prevMoodRef.current !== mood) {
+      setOpacity(0)
+      const timer = setTimeout(() => setOpacity(1), 150)
+      prevMoodRef.current = mood
+      return () => clearTimeout(timer)
+    }
+  }, [mood])
 
   useEffect(() => {
-    if (!rive) return
-    try {
-      const inputs = rive.stateMachineInputs('PetMood')
-      if (inputs) {
-        const moodInput = inputs.find((i) => i.name === 'mood')
-        if (moodInput) moodInput.fire()
-        const trigger = inputs.find((i) => i.name === mood)
-        if (trigger) trigger.fire()
-      }
-    } catch { /* .riv not available — placeholder shows */ }
-    prevMoodRef.current = mood
-  }, [rive, mood])
+    ensureShimmerStyle()
+  }, [])
 
-  if (!riveLoaded) {
+  if (videoError) {
     const Placeholder = PLACEHOLDERS[petType] ?? DachshundPlaceholder
     return <Placeholder mood={mood} />
   }
 
+  const videoKey = `${petType}_${mood}`
+
   return (
-    <div style={{ width: 300, height: 300 }}>
-      <RiveComponent style={{ width: 300, height: 300 }} />
+    <div
+      style={{
+        width: 300,
+        height: 300,
+        borderRadius: 24,
+        background: MOOD_BG[mood],
+        transition: 'background 0.5s',
+        overflow: 'hidden',
+        position: 'relative',
+      }}
+    >
+      {!videoLoaded && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%)',
+            backgroundSize: '300px 100%',
+            animation: 'pet-shimmer 1.5s infinite linear',
+          }}
+        />
+      )}
+      <video
+        key={videoKey}
+        autoPlay
+        loop
+        muted
+        playsInline
+        width={300}
+        height={300}
+        src={`/pets/${petType}_${mood}.webm`}
+        onLoadedData={() => setVideoLoaded(true)}
+        onError={(e) => {
+          const vid = e.currentTarget
+          // If WebM failed, try MP4 fallback
+          if (vid.src.endsWith('.webm')) {
+            vid.src = `/pets/${petType}_${mood}.mp4`
+          } else {
+            // Both formats failed — use SVG placeholder
+            setVideoError(true)
+          }
+        }}
+        style={{
+          display: 'block',
+          opacity,
+          transition: 'opacity 150ms ease',
+        }}
+      />
+      <div style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }}>
+        <MoodOverlays mood={mood} />
+      </div>
     </div>
   )
 }
