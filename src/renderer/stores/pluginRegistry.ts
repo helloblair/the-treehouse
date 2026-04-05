@@ -4,7 +4,7 @@ import { pluginStore } from './pluginStore'
 const defaultPlugins: PluginManifest[] = [
   {
     id: 'treehouse-chess',
-    name: 'Chess',
+    name: 'PokéChess',
     iframeUrl: 'http://localhost:5174',
     mcpServerUrl: 'http://localhost:5174/mcp',
     tools: [
@@ -15,7 +15,7 @@ const defaultPlugins: PluginManifest[] = [
       },
       {
         name: 'make_move',
-        description: 'Make YOUR move as Black. Only call this when it is Black\'s turn. The human moves White pieces by dragging on the visual board — never call this for White moves. Uses algebraic notation (e.g. "e5", "Nf6", "O-O"). Call get_board_state first if you are unsure whose turn it is.',
+        description: 'Make YOUR move as Black. Only call this when it is Black\'s turn. The human moves White pieces by dragging on the visual board — never call this for White moves. Uses algebraic notation (e.g. "e5", "Nf6", "O-O"). IMPORTANT: You MUST call get_board_state before EVERY make_move to read the current position and move history. Never assume the board state from memory.',
         parameters: {
           type: 'object',
           properties: { move: { type: 'string', description: 'The move in algebraic notation' } },
@@ -25,7 +25,7 @@ const defaultPlugins: PluginManifest[] = [
       },
       {
         name: 'get_board_state',
-        description: 'Get the current board position as a FEN string. Use this to see what moves have been made and whose turn it is. The user can see the visual board — do NOT render a text/ASCII board.',
+        description: 'Get the current board position and full move history. Returns FEN, whose turn it is, all moves played so far, and check status. You MUST call this before every make_move. The user can see the visual board — do NOT render a text/ASCII board.',
         parameters: { type: 'object', properties: {}, additionalProperties: false },
       },
       {
@@ -243,6 +243,145 @@ const defaultPlugins: PluginManifest[] = [
           },
           required: ['submission_id'],
           additionalProperties: false,
+        },
+      },
+    ],
+    sandboxPolicy: '',
+    enabled: true,
+  },
+  {
+    id: 'treehouse-body',
+    name: 'Anatomy Adventure',
+    iframeUrl: 'http://localhost:5179',
+    mcpServerUrl: 'http://localhost:5179/mcp',
+    tools: [
+      {
+        name: 'get_progress',
+        description:
+          'Get the student\'s Anatomy Adventure progress: XP, streaks, explored parts, quiz results, and per-system completion. Use this to check how far along they are or to praise their progress.',
+        parameters: { type: 'object', properties: {}, additionalProperties: false },
+      },
+      {
+        name: 'start_quiz',
+        description:
+          'Prompt the student to start a quiz by clicking a body part in the diagram. Returns instructions for the student.',
+        parameters: { type: 'object', properties: {}, additionalProperties: false },
+      },
+      {
+        name: 'get_systems',
+        description:
+          'List all available body systems in Anatomy Adventure with their names, part counts, and descriptions.',
+        parameters: { type: 'object', properties: {}, additionalProperties: false },
+      },
+    ],
+    sandboxPolicy: '',
+    enabled: true,
+  },
+  {
+    id: 'treehouse-pioneer',
+    name: 'Pioneer Path',
+    iframeUrl: 'http://localhost:5178',
+    mcpServerUrl: 'http://localhost:5178/mcp',
+    tools: [
+      {
+        name: 'start_journey',
+        description:
+          'Begins a new Pioneer Path game. Player names their party of 5 pioneers and sets starting funds. A pixel art trail map appears with the wagon at Frontier Town. After calling this, narrate the departure and then STOP — present the player with their options (buy supplies, set pace, hit the trail) and WAIT for them to decide.',
+        parameters: {
+          type: 'object',
+          properties: {
+            party_names: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Names of 5 party members',
+            },
+            starting_money: {
+              type: 'number',
+              description: 'Starting funds in dollars (100-1600, default 800)',
+            },
+          },
+          required: ['party_names'],
+        },
+      },
+      {
+        name: 'get_journey_state',
+        description:
+          'Returns current game state: day, miles, supplies, party health, weather, active events, and availableActions. IMPORTANT: Only narrate facts from the returned data — never invent outcomes or skip ahead. Use the availableActions array to know exactly which options to present to the player. Narrate as a frontier journal entry, referencing party members by name.',
+        parameters: { type: 'object', properties: {} },
+      },
+      {
+        name: 'make_decision',
+        description:
+          'Execute a trail decision the PLAYER has explicitly requested: set pace, set rations, rest, continue, hunt, or trade at a fort. Hunting auto-simulates and returns actual results (food gained, ammo used) — narrate ONLY what the tool result says, never invent hunt outcomes. For river crossings use cross_river instead. Only call this when the player has told you what they want to do. NEVER call this on your own.',
+        parameters: {
+          type: 'object',
+          properties: {
+            decision: {
+              type: 'string',
+              enum: [
+                'set_pace_steady',
+                'set_pace_strenuous',
+                'set_pace_grueling',
+                'set_rations_filling',
+                'set_rations_meager',
+                'set_rations_bare_bones',
+                'rest',
+                'continue',
+                'hunt',
+                'trade',
+              ],
+              description: 'The decision to make',
+            },
+            trade_item: {
+              type: 'string',
+              description: 'Item to buy if decision is trade (food, clothing, ammunition, medicine, oxen)',
+            },
+            trade_quantity: { type: 'number', description: 'Quantity to buy' },
+          },
+          required: ['decision'],
+        },
+      },
+      {
+        name: 'resolve_event',
+        description:
+          'Resolve an active random trail event. Only call when the player has chosen which option to take. Narrate the consequence dramatically, then STOP and wait for the player\'s next decision.',
+        parameters: {
+          type: 'object',
+          properties: {
+            choice_index: {
+              type: 'number',
+              description: 'Index of the chosen option from the event choices array',
+            },
+          },
+          required: ['choice_index'],
+        },
+      },
+      {
+        name: 'advance_days',
+        description:
+          'Advance the journey by 1-7 days. Only call when the player says to continue, move on, or travel. Applies daily food consumption, weather changes, travel miles, health effects, and may trigger random events. After calling, narrate what happened based on the returned data and STOP — present the availableActions to the player.',
+        parameters: {
+          type: 'object',
+          properties: {
+            days: { type: 'number', description: 'Number of days to advance (1-7)' },
+          },
+          required: ['days'],
+        },
+      },
+      {
+        name: 'cross_river',
+        description:
+          'Cross a river when the game phase is "river". Only available at river crossings. The state includes riverDepth — use it to advise the player on risk. Ford is free but risky (risk scales with depth). Caulk & float is free with moderate risk. Ferry costs $5 but is safe. Narrate the result based on the returned data. NEVER call this unless the player has chosen a crossing method.',
+        parameters: {
+          type: 'object',
+          properties: {
+            method: {
+              type: 'string',
+              enum: ['ford', 'caulk', 'ferry'],
+              description: 'Crossing method: ford (free, risky), caulk (free, moderate risk), ferry ($5, safe)',
+            },
+          },
+          required: ['method'],
         },
       },
     ],

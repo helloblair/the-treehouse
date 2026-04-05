@@ -1,0 +1,43 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #2B1B0E;
+  color: #E8D5B7;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+button {
+  font-family: 'Courier New', Courier, monospace;
+  cursor: pointer;
+  background: #5C3D1E;
+  color: #E8D5B7;
+  border: 2px solid #8B6914;
+  padding: 6px 14px;
+  font-size: 13px;
+  transition: background 0.15s;
+}
+
+button:hover {
+  background: #7B5A2E;
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+select {
+  font-family: 'Courier New', Courier, monospace;
+  background: #3B2510;
+  color: #E8D5B7;
+  border: 1px solid #8B6914;
+  padding: 4px 8px;
+  font-size: 13px;
+}
