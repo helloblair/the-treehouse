@@ -31,13 +31,23 @@ function PluginIframe({ manifest, userId, role }: { manifest: (typeof pluginStor
       if (!ready) {
         console.warn(`[Treehouse] Plugin "${manifest.id}" failed to load within 10 seconds`)
         pluginStore.getState().dismissPlugin()
+        pluginStore.getState().incrementFailure(manifest.id)
+        // Send recovery message to chat
+        const sessionId = getDefaultStore().get(currentSessionIdAtom)
+        if (sessionId) {
+          const msg = createMessage(
+            'user',
+            `The ${manifest.name} app couldn't load right now. You can try again by asking me to open it, or we can keep going.`,
+          )
+          void submitNewUserMessage(sessionId, { newUserMsg: msg, needGenerating: true })
+        }
       }
     }, 10_000)
 
     return () => {
       clearTimeout(loadTimerRef.current)
     }
-  }, [manifest.id, ready])
+  }, [manifest.id, manifest.name, ready])
 
   // Clear ready state only on unmount
   useEffect(() => {
@@ -87,8 +97,22 @@ function PluginIframe({ manifest, userId, role }: { manifest: (typeof pluginStor
           break
         }
         case 'TREEHOUSE_ERROR': {
+          const errorMsg = data.payload?.message || data.payload?.error || 'Unknown plugin error'
           if (data.payload?.fatal) {
+            console.error(`[Treehouse] Fatal error from "${manifest.id}":`, errorMsg)
             pluginStore.getState().dismissPlugin()
+            pluginStore.getState().incrementFailure(manifest.id)
+            // Send recovery message to chat
+            const sessionId = getDefaultStore().get(currentSessionIdAtom)
+            if (sessionId) {
+              const msg = createMessage(
+                'user',
+                `The ${manifest.name} app ran into an error and had to close. You can try again by asking me to open it, or we can keep going.`,
+              )
+              void submitNewUserMessage(sessionId, { newUserMsg: msg, needGenerating: true })
+            }
+          } else {
+            console.warn(`[Treehouse] Non-fatal error from "${manifest.id}":`, errorMsg)
           }
           break
         }

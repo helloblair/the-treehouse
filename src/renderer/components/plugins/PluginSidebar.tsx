@@ -27,16 +27,20 @@ export default function PluginSidebar() {
             }
           }}
           leftSection={
-            <div
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                backgroundColor: plugin.enabled && !degraded[plugin.id]
-                  ? 'var(--mantine-color-blue-filled)'
-                  : 'var(--mantine-color-gray-5)',
-              }}
-            />
+            degraded[plugin.id] ? (
+              <span style={{ fontSize: 14, lineHeight: 1 }} title="Plugin unavailable — too many failures">&#9888;</span>
+            ) : (
+              <div
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  backgroundColor: plugin.enabled
+                    ? 'var(--mantine-color-blue-filled)'
+                    : 'var(--mantine-color-gray-5)',
+                }}
+              />
+            )
           }
           styles={{
             root: { borderRadius: 6, opacity: degraded[plugin.id] ? 0.5 : 1 },
