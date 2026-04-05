@@ -7,6 +7,7 @@ import PetView from './components/PetView'
 
 const PLUGIN_ID = 'treehouse-pet'
 const PLATFORM_ORIGIN = import.meta.env.VITE_PLATFORM_ORIGIN || '*'
+const PET_CACHE_KEY = 'chatbridge_pet_cache'
 
 type ToolCallPayload = {
   type: 'TREEHOUSE_TOOL_CALL'
@@ -54,15 +55,47 @@ function getFullState(pet: Pet) {
   }
 }
 
-// Fetch pet directly from Supabase by userId
+// localStorage cache helpers
+function cachePetToLocal(pet: Pet) {
+  try {
+    localStorage.setItem(PET_CACHE_KEY, JSON.stringify(pet))
+  } catch { /* quota exceeded — ignore */ }
+}
+
+function loadPetFromLocal(): Pet | null {
+  try {
+    const raw = localStorage.getItem(PET_CACHE_KEY)
+    return raw ? (JSON.parse(raw) as Pet) : null
+  } catch {
+    return null
+  }
+}
+
+type PendingWrite = {
+  table: string
+  id: string
+  updates: Record<string, unknown>
+}
+
+// Fetch pet directly from Supabase by userId, with localStorage fallback
 async function fetchPetFromDb(uid: string): Promise<Pet | null> {
-  const { data } = await supabase
-    .from('pets')
-    .select('*')
-    .eq('user_id', uid)
-    .limit(1)
-    .single()
-  return data as Pet | null
+  try {
+    const { data, error } = await supabase
+      .from('pets')
+      .select('*')
+      .eq('user_id', uid)
+      .limit(1)
+      .single()
+    if (error) throw error
+    if (data) {
+      cachePetToLocal(data as Pet)
+      return data as Pet
+    }
+    return null
+  } catch (err) {
+    console.warn('[treehouse-pet] Supabase fetch failed, using localStorage cache:', err)
+    return loadPetFromLocal()
+  }
 }
 
 function App() {
@@ -70,9 +103,11 @@ function App() {
   const [pet, setPet] = useState<Pet | null>(null)
   const [loading, setLoading] = useState(true)
   const [ecstaticUntil, setEcstaticUntil] = useState(0)
+  const [saving, setSaving] = useState(false)
   const petRef = useRef<Pet | null>(null)
   const userIdRef = useRef<string | null>(null)
   const initResolversRef = useRef<Array<() => void>>([])
+  const pendingWritesRef = useRef<PendingWrite[]>([])
 
   // Keep refs in sync
   useEffect(() => {
@@ -81,6 +116,56 @@ function App() {
   useEffect(() => {
     userIdRef.current = userId
   }, [userId])
+
+  // Write pet updates to Supabase with retry queue
+  async function writePetToDb(petId: string, updates: Record<string, unknown>): Promise<Pet | null> {
+    // First, try to flush any queued writes
+    await flushPendingWrites()
+
+    try {
+      setSaving(true)
+      const { data, error } = await supabase
+        .from('pets')
+        .update(updates)
+        .eq('id', petId)
+        .select()
+        .single()
+      if (error) throw error
+      const updated = data as Pet
+      cachePetToLocal(updated)
+      setSaving(false)
+      return updated
+    } catch (err) {
+      console.warn('[treehouse-pet] Supabase write failed, queuing for retry:', err)
+      pendingWritesRef.current.push({ table: 'pets', id: petId, updates })
+      // Optimistically update local state and cache
+      const optimistic = { ...petRef.current, ...updates } as Pet
+      cachePetToLocal(optimistic)
+      setSaving(true) // keep indicator visible
+      return optimistic
+    }
+  }
+
+  async function flushPendingWrites() {
+    if (pendingWritesRef.current.length === 0) return
+    const toRetry = [...pendingWritesRef.current]
+    pendingWritesRef.current = []
+    for (const write of toRetry) {
+      try {
+        const { error } = await supabase
+          .from(write.table)
+          .update(write.updates)
+          .eq('id', write.id)
+        if (error) throw error
+      } catch {
+        // Put back for next attempt
+        pendingWritesRef.current.push(write)
+      }
+    }
+    if (pendingWritesRef.current.length === 0) {
+      setSaving(false)
+    }
+  }
 
   // Wait for init_pet to complete (up to 5 seconds)
   function waitForInit(): Promise<void> {
@@ -160,19 +245,13 @@ function App() {
           const newStage = getGrowthStage(newXp)
           const newHappiness = Math.min(100, currentPet.happiness + 10)
 
-          const { data } = await supabase
-            .from('pets')
-            .update({
-              xp: newXp,
-              growth_stage: newStage,
-              happiness: newHappiness,
-            })
-            .eq('id', currentPet.id)
-            .select()
-            .single()
+          const updated = await writePetToDb(currentPet.id, {
+            xp: newXp,
+            growth_stage: newStage,
+            happiness: newHappiness,
+          })
 
-          if (data) {
-            const updated = data as Pet
+          if (updated) {
             setPet(updated)
             petRef.current = updated
             const state = getFullState(updated)
@@ -187,18 +266,12 @@ function App() {
         case 'play_with_pet': {
           const newHappiness = Math.min(100, currentPet.happiness + 30)
 
-          const { data } = await supabase
-            .from('pets')
-            .update({
-              last_played_at: new Date().toISOString(),
-              happiness: newHappiness,
-            })
-            .eq('id', currentPet.id)
-            .select()
-            .single()
+          const updated = await writePetToDb(currentPet.id, {
+            last_played_at: new Date().toISOString(),
+            happiness: newHappiness,
+          })
 
-          if (data) {
-            const updated = data as Pet
+          if (updated) {
             setPet(updated)
             petRef.current = updated
             setEcstaticUntil(Date.now() + 3000)
@@ -231,19 +304,13 @@ function App() {
           const newHappiness = Math.min(100, currentPet.happiness + 15)
           const newHealth = Math.min(100, currentPet.health + 5)
 
-          const { data } = await supabase
-            .from('pets')
-            .update({
-              happiness: newHappiness,
-              health: newHealth,
-              last_bathed_at: new Date().toISOString(),
-            })
-            .eq('id', currentPet.id)
-            .select()
-            .single()
+          const updated = await writePetToDb(currentPet.id, {
+            happiness: newHappiness,
+            health: newHealth,
+            last_bathed_at: new Date().toISOString(),
+          })
 
-          if (data) {
-            const updated = data as Pet
+          if (updated) {
             setPet(updated)
             petRef.current = updated
             setEcstaticUntil(Date.now() + 2000)
@@ -258,18 +325,12 @@ function App() {
           const newHappiness = Math.min(100, currentPet.happiness + 10)
           const newHealth = Math.min(100, currentPet.health + 3)
 
-          const { data } = await supabase
-            .from('pets')
-            .update({
-              happiness: newHappiness,
-              health: newHealth,
-            })
-            .eq('id', currentPet.id)
-            .select()
-            .single()
+          const updated = await writePetToDb(currentPet.id, {
+            happiness: newHappiness,
+            health: newHealth,
+          })
 
-          if (data) {
-            const updated = data as Pet
+          if (updated) {
             setPet(updated)
             petRef.current = updated
             sendResult(callId, getFullState(updated))
@@ -345,13 +406,31 @@ function App() {
   }
 
   return (
-    <PetView
-      pet={pet}
-      onPetUpdate={(updated) => {
-        setPet(updated)
-        petRef.current = updated
-      }}
-    />
+    <>
+      <PetView
+        pet={pet}
+        onPetUpdate={(updated) => {
+          setPet(updated)
+          petRef.current = updated
+        }}
+      />
+      {saving && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: 8,
+            right: 8,
+            background: 'rgba(0,0,0,0.7)',
+            color: '#fff',
+            padding: '4px 10px',
+            borderRadius: 6,
+            fontSize: 12,
+          }}
+        >
+          Saving...
+        </div>
+      )}
+    </>
   )
 }
 
