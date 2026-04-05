@@ -46,13 +46,17 @@ const defaultPlugins: PluginManifest[] = [
       {
         name: 'start_canvas',
         description:
-          'Open a blank pixel art canvas for the user to draw on. A visual interactive grid appears — the user draws by clicking cells. Optional param "size" can be 16 (default) or 32 for a larger canvas.',
+          'Open a pixel art canvas for the user to draw on. A visual interactive grid appears — the user draws by clicking cells. If the user already has a drawing and the size is unchanged, it restores the existing drawing unless "reset" is true. Optional param "size" can be 16 (default) or 32 for a larger canvas.',
         parameters: {
           type: 'object',
           properties: {
             size: {
               type: 'number',
               description: 'Grid size: 16 (default) or 32',
+            },
+            reset: {
+              type: 'boolean',
+              description: 'If true, clears any existing drawing and starts fresh even if the size is the same',
             },
           },
           additionalProperties: false,
@@ -61,7 +65,7 @@ const defaultPlugins: PluginManifest[] = [
       {
         name: 'get_canvas_state',
         description:
-          'Capture the current pixel art canvas as a base64 PNG image. Returns { imageBase64, width, height }. Use this when the user asks you to look at, describe, or critique their drawing.',
+          'Capture the current pixel art canvas. Returns { imageBase64, textGrid, legend, width, height }. imageBase64 is a PNG screenshot. textGrid is a character-based representation of the grid using color symbols (. for white/empty, # for black, R red, O orange, etc.) and legend maps each symbol to its hex color. Use this when the user asks you to look at, describe, or critique their drawing.',
         parameters: { type: 'object', properties: {}, additionalProperties: false },
       },
       {
@@ -99,7 +103,7 @@ const defaultPlugins: PluginManifest[] = [
       {
         name: 'get_pet_state',
         description:
-          "Get the student's pet current state including name, type, mood, hunger, happiness, health, and growth stage. Use this to check on the pet or reference it by name in conversation.",
+          "Get the student's pet current state including name, type, mood, hunger, happiness, health, growth stage, and xp. Use this to check on the pet or reference it by name in conversation. XP thresholds: 100 (junior), 300 (adult), 500 (max).",
         parameters: { type: 'object', properties: {}, additionalProperties: false },
       },
       {
@@ -286,7 +290,7 @@ const defaultPlugins: PluginManifest[] = [
       {
         name: 'start_journey',
         description:
-          'Begins a new Pioneer Path game. Player names their party of 5 pioneers and sets starting funds. A pixel art trail map appears with the wagon at Frontier Town. After calling this, narrate the departure and then STOP — present the player with their options (buy supplies, set pace, hit the trail) and WAIT for them to decide.',
+          'Begins a new Pioneer Path game. Player names their party of 5 pioneers and sets starting funds. A pixel art trail map appears with the wagon at Frontier Town. After calling this, narrate the departure and then STOP — present the player with their options (set pace, set rations, continue onto the trail, rest, or hunt) and WAIT for them to decide. Trading is only available at forts further along the trail.',
         parameters: {
           type: 'object',
           properties: {
@@ -306,13 +310,13 @@ const defaultPlugins: PluginManifest[] = [
       {
         name: 'get_journey_state',
         description:
-          'Returns current game state: day, miles, supplies, party health, weather, active events, and availableActions. IMPORTANT: Only narrate facts from the returned data — never invent outcomes or skip ahead. Use the availableActions array to know exactly which options to present to the player. Narrate as a frontier journal entry, referencing party members by name.',
+          'Returns current game state: day, miles, supplies, party health, weather, active events, availableActions, and the last 5 log entries. IMPORTANT: Only narrate facts from the returned data — never invent outcomes or skip ahead. Use the availableActions array to know exactly which options to present to the player. The log entries show recent events (deaths, weather changes, arrivals) — weave them into your narration. Narrate as a frontier journal entry, referencing party members by name.',
         parameters: { type: 'object', properties: {} },
       },
       {
         name: 'make_decision',
         description:
-          'Execute a trail decision the PLAYER has explicitly requested: set pace, set rations, rest, continue, hunt, or trade at a fort. Hunting auto-simulates and returns actual results (food gained, ammo used) — narrate ONLY what the tool result says, never invent hunt outcomes. For river crossings use cross_river instead. Only call this when the player has told you what they want to do. NEVER call this on your own.',
+          'Execute a trail decision the PLAYER has explicitly requested: set pace, set rations, rest, continue, hunt, or trade at a fort. Hunting transitions the game to an interactive hunt mini-game in the UI — the player clicks animals on a canvas to shoot them. The hunt results (food gained, ammo used) come back via state update when the mini-game finishes. After calling hunt, tell the player the hunt is starting and STOP — wait for the results. For river crossings use cross_river instead. Only call this when the player has told you what they want to do. NEVER call this on your own.',
         parameters: {
           type: 'object',
           properties: {
