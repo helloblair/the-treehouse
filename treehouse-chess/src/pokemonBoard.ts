@@ -49,6 +49,7 @@ export const pokeballBoardStyle: CSSProperties = {
 
 export const pokeballSquareStyle: CSSProperties = {
   outline: '1px solid rgba(255, 255, 255, 0.12)',
+  overflow: 'hidden',
 }
 
 // Transparent so squareStyles controls all colors
