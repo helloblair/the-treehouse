@@ -198,6 +198,29 @@ export async function streamText(
     // Auth not available — proceed without role context
   }
 
+  // TREEHOUSE: Pioneer Path narration prompt
+  {
+    const pluginState = pluginStore.getState()
+    const pioneerEnabled = pluginState.manifests.find(
+      (m) => m.id === 'treehouse-pioneer' && m.enabled && !pluginState.degraded[m.id]
+    )
+    if (pioneerEnabled) {
+      toolSetInstructions +=
+        '\nWhen The Pioneer Path is active, you are a frontier narrator. Use vivid historical language. ' +
+        'Reference party members by name. Make deaths feel meaningful and victories feel earned. ' +
+        'When get_journey_state returns data, narrate it as a journal entry, not a status report. ' +
+        'When a party member dies, give a heartfelt eulogy. When the party reaches Valley\'s End, ' +
+        'celebrate with a full narrative of the journey.\n' +
+        'CRITICAL GAMEPLAY RULE: This is a turn-based game. After EVERY tool call, you MUST stop and ' +
+        'wait for the player to tell you what to do next. NEVER chain multiple game actions in one turn. ' +
+        'After start_journey: narrate the scene, present the player\'s options, then STOP. ' +
+        'After advance_days: narrate what happened, then STOP and ask what the player wants to do. ' +
+        'After any event or river crossing: narrate the outcome, then STOP. ' +
+        'The player decides when to travel, hunt, trade, rest, or change pace — not you. ' +
+        'Always end your response with a clear question or list of choices for the player.\n'
+    }
+  }
+
   params.messages = injectModelSystemPrompt(
     model.modelId,
     params.messages,
@@ -353,6 +376,11 @@ export async function streamText(
           let field: z.ZodTypeAny = z.string()
           if (prop.type === 'number') field = z.number()
           else if (prop.type === 'boolean') field = z.boolean()
+          else if (prop.type === 'array') {
+            const items = (prop as { items?: { type?: string } }).items
+            const itemSchema = items?.type === 'number' ? z.number() : items?.type === 'boolean' ? z.boolean() : z.string()
+            field = z.array(itemSchema)
+          }
           if (prop.description) field = field.describe(prop.description)
           zodShape[key] = required.has(key) ? field : field.optional()
         }
@@ -376,7 +404,13 @@ export async function streamText(
             })
           )
           // Wait for result from iframe via pluginBridge
-          return registerToolCall(callId)
+          try {
+            return await registerToolCall(callId)
+          } catch (err) {
+            // Tool call timed out or errored — increment failure count
+            pluginStore.getState().incrementFailure(capturedManifest.id)
+            return { isError: true, error: "The app didn't respond in time." }
+          }
         }
         tools[pluginTool.name] = {
           ...createTool({ description: pluginTool.description, inputSchema: zodSchema }),
