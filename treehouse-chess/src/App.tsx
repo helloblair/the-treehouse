@@ -34,6 +34,38 @@ function sendResult(callId: string, result: unknown, isError = false) {
   )
 }
 
+function sendError(message: string, fatal: boolean) {
+  window.parent.postMessage(
+    {
+      type: 'TREEHOUSE_ERROR',
+      pluginId: PLUGIN_ID,
+      payload: { message, fatal },
+    },
+    PLATFORM_ORIGIN,
+  )
+}
+
+/** Extract a human-readable piece name from SAN or UCI-style move string */
+function describePiece(moveStr: string): string {
+  const san = moveStr.trim()
+  const firstChar = san.charAt(0)
+  const pieceMap: Record<string, string> = { K: 'King', Q: 'Queen', R: 'Rook', B: 'Bishop', N: 'Knight' }
+  if (pieceMap[firstChar]) return pieceMap[firstChar]
+  // Lowercase letter = pawn move (e.g. "e4", "exd5") or UCI (e.g. "e2e4")
+  return 'Pawn'
+}
+
+/** Extract destination square from a move string */
+function describeSquares(moveStr: string): { from: string | null; to: string | null } {
+  const san = moveStr.trim()
+  // UCI format: "e2e4" — 4 or 5 chars, all lowercase/digits
+  const uciMatch = san.match(/^([a-h][1-8])([a-h][1-8])/)
+  if (uciMatch) return { from: uciMatch[1], to: uciMatch[2] }
+  // SAN format: extract last two chars as destination
+  const sanMatch = san.match(/([a-h][1-8])[+#=]?[QRBN]?$/)
+  return { from: null, to: sanMatch ? sanMatch[1] : null }
+}
+
 function sendCompletion(winner: string, moveCount: number, chess: Chess) {
   window.parent.postMessage(
     {
@@ -118,22 +150,51 @@ function App() {
             break
           }
           try {
-            const move = chess.move(params.move as string)
+            const moveStr = params.move as string
+            const move = chess.move(moveStr)
             if (!move) {
-              sendResult(callId, { success: false, error: 'That move is not legal' })
+              const piece = describePiece(moveStr)
+              const { from, to } = describeSquares(moveStr)
+              const detail = from && to
+                ? `${piece} cannot move from ${from} to ${to}.`
+                : to
+                  ? `${piece} cannot move to ${to}.`
+                  : ''
+              sendResult(callId, { success: false, error: `That move is not legal. ${detail}`.trim() })
             } else {
               setFen(chess.fen())
               if (!checkGameEnd(chess)) {
-                sendResult(callId, { success: true, fen: chess.fen() })
+                sendResult(callId, {
+                  success: true,
+                  fen: chess.fen(),
+                  movePlayed: move.san,
+                  turn: 'White',
+                  moveHistory: chess.history(),
+                  inCheck: chess.inCheck(),
+                })
               }
             }
           } catch {
-            sendResult(callId, { success: false, error: 'That move is not legal' })
+            const moveStr = params.move as string
+            const piece = describePiece(moveStr)
+            const { from, to } = describeSquares(moveStr)
+            const detail = from && to
+              ? `${piece} cannot move from ${from} to ${to}.`
+              : to
+                ? `${piece} cannot move to ${to}.`
+                : ''
+            sendResult(callId, { success: false, error: `That move is not legal. ${detail}`.trim() })
           }
           break
         }
         case 'get_board_state': {
-          sendResult(callId, { fen: chess.fen() })
+          sendResult(callId, {
+            fen: chess.fen(),
+            turn: chess.turn() === 'w' ? 'White' : 'Black',
+            moveHistory: chess.history(),
+            moveCount: chess.history().length,
+            inCheck: chess.inCheck(),
+          })
           break
         }
         case 'resign': {
@@ -181,7 +242,12 @@ function App() {
       if (PLATFORM_ORIGIN !== '*' && event.origin !== PLATFORM_ORIGIN) return
       const data = event.data
       if (data?.type === 'TREEHOUSE_TOOL_CALL' && data?.pluginId === PLUGIN_ID) {
-        handleToolCall(data as ToolCallPayload)
+        try {
+          handleToolCall(data as ToolCallPayload)
+        } catch (err) {
+          console.error('[treehouse-chess] Unhandled error in tool call:', err)
+          sendError(err instanceof Error ? err.message : String(err), false)
+        }
       }
     }
 
@@ -222,7 +288,7 @@ function App() {
 
   return (
     <div style={{ width: 400, margin: '0 auto' }}>
-      <div style={{ width: 400, height: 400 }}>
+      <div style={{ width: 400, height: 400, touchAction: 'none' }}>
         <Chessboard
           options={{
             position: fen,
@@ -234,6 +300,7 @@ function App() {
             squareStyles: pokeballSquareStyles,
             darkSquareStyle: pokeballDarkSquareStyle,
             lightSquareStyle: pokeballLightSquareStyle,
+            allowAutoScroll: false,
           }}
         />
       </div>
