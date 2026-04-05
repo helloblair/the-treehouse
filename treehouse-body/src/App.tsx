@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { BODY_SYSTEMS } from './data/systems'
-import { initMessaging } from './lib/messaging'
+import { initMessaging, sendStateUpdate } from './lib/messaging'
 import { registerBodyTools, handleToolCall } from './lib/tools'
 import type { BodyPart, BodySystemConfig, PlayerStats } from './types'
 
@@ -641,10 +641,12 @@ export default function App() {
   const statsRef = useRef(stats)
   statsRef.current = stats
 
-  // Register tools on mount
+  // Register tools on mount; pass restore handler for cross-session persistence
   useEffect(() => {
     registerBodyTools(() => statsRef.current)
-    const cleanup = initMessaging(handleToolCall)
+    const cleanup = initMessaging(handleToolCall, (restored) => {
+      setStats(restored)
+    })
     return cleanup
   }, [])
 
@@ -680,6 +682,7 @@ export default function App() {
     }
     checkNewBadges(newStats)
     setStats(newStats)
+    sendStateUpdate(newStats)
   }
 
   const handleQuizAnswer = (correct: boolean) => {
@@ -713,6 +716,7 @@ export default function App() {
 
     checkNewBadges(newStats)
     setStats(newStats)
+    sendStateUpdate(newStats)
     setTimeout(() => {
       setShowQuiz(false)
       setActivePart(null)
@@ -1150,6 +1154,7 @@ export default function App() {
             {activePart && showQuiz && (
               <div style={{ marginBottom: 16 }}>
                 <QuizPanel
+                  key={activePart.id}
                   part={activePart}
                   system={sysData}
                   onAnswer={handleQuizAnswer}

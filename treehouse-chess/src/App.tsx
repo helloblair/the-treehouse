@@ -66,6 +66,25 @@ function describeSquares(moveStr: string): { from: string | null; to: string | n
   return { from: null, to: sanMatch ? sanMatch[1] : null }
 }
 
+function sendStateUpdate(chess: Chess) {
+  window.parent.postMessage(
+    {
+      type: 'TREEHOUSE_STATE_UPDATE',
+      pluginId: PLUGIN_ID,
+      payload: {
+        state: {
+          pgn: chess.pgn(),
+          fen: chess.fen(),
+          turn: chess.turn(),
+          history: chess.history(),
+          gameOver: chess.isGameOver(),
+        },
+      },
+    },
+    PLATFORM_ORIGIN,
+  )
+}
+
 function sendCompletion(winner: string, moveCount: number, chess: Chess) {
   window.parent.postMessage(
     {
@@ -137,7 +156,9 @@ function App() {
           chess.reset()
           setFen(chess.fen())
           setGameOver(false)
+          setPendingMove(null)
           sendResult(callId, { success: true, fen: chess.fen() })
+          sendStateUpdate(chess)
           break
         }
         case 'make_move': {
@@ -163,16 +184,17 @@ function App() {
               sendResult(callId, { success: false, error: `That move is not legal. ${detail}`.trim() })
             } else {
               setFen(chess.fen())
-              if (!checkGameEnd(chess)) {
-                sendResult(callId, {
-                  success: true,
-                  fen: chess.fen(),
-                  movePlayed: move.san,
-                  turn: 'White',
-                  moveHistory: chess.history(),
-                  inCheck: chess.inCheck(),
-                })
-              }
+              const gameEnded = checkGameEnd(chess)
+              sendResult(callId, {
+                success: true,
+                fen: chess.fen(),
+                movePlayed: move.san,
+                turn: 'White',
+                moveHistory: chess.history(),
+                inCheck: chess.inCheck(),
+                gameOver: gameEnded,
+              })
+              sendStateUpdate(chess)
             }
           } catch {
             const moveStr = params.move as string
@@ -214,9 +236,9 @@ function App() {
 
   // react-chessboard v5: onPieceDrop receives { piece, sourceSquare, targetSquare }
   const onPieceDrop = useCallback(
-    ({ sourceSquare, targetSquare }: { piece: string; sourceSquare: string; targetSquare: string }): boolean => {
+    ({ sourceSquare, targetSquare }: { piece: unknown; sourceSquare: string; targetSquare: string | null }): boolean => {
       const chess = gameRef.current
-      if (gameOver) return false
+      if (gameOver || !targetSquare) return false
       if (chess.turn() !== 'w') return false
       try {
         const move = chess.move({
@@ -249,6 +271,22 @@ function App() {
           sendError(err instanceof Error ? err.message : String(err), false)
         }
       }
+      // Restore state from parent cache or Supabase persistence
+      if (data?.type === 'TREEHOUSE_RESTORE_STATE' && data?.pluginId === PLUGIN_ID) {
+        const s = data.payload?.state
+        if (s?.pgn) {
+          try {
+            const chess = gameRef.current
+            chess.loadPgn(s.pgn)
+            setFen(chess.fen())
+            setGameOver(chess.isGameOver())
+            setPendingMove(null)
+          } catch (err) {
+            console.warn('[treehouse-chess] Failed to restore game from PGN:', err)
+            // Leave the game in its current (fresh) state
+          }
+        }
+      }
     }
 
     window.addEventListener('message', onMessage)
@@ -266,17 +304,18 @@ function App() {
   const confirmMove = useCallback(() => {
     if (!pendingMove) return
     const chess = gameRef.current
-    // Notify parent to send a chat message on behalf of the user
+    // Send full state (with pgn for cross-session restore) plus user message
     window.parent.postMessage(
       {
         type: 'TREEHOUSE_STATE_UPDATE',
         pluginId: PLUGIN_ID,
         payload: {
           state: {
+            pgn: chess.pgn(),
             fen: chess.fen(),
-            lastMove: pendingMove,
             turn: chess.turn(),
             history: chess.history(),
+            gameOver: chess.isGameOver(),
           },
           userMessage: `I played ${pendingMove}. Your turn!`,
         },
@@ -305,23 +344,42 @@ function App() {
         />
       </div>
       {pendingMove && !gameOver && (
-        <button
-          onClick={confirmMove}
-          style={{
-            display: 'block',
-            margin: '8px auto',
-            padding: '6px 20px',
-            fontSize: 14,
-            fontWeight: 600,
-            borderRadius: 8,
-            border: 'none',
-            background: '#4a9eff',
-            color: '#fff',
-            cursor: 'pointer',
-          }}
-        >
-          Confirm {pendingMove} ✓
-        </button>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 8 }}>
+          <button
+            onClick={() => {
+              gameRef.current.undo()
+              setFen(gameRef.current.fen())
+              setPendingMove(null)
+            }}
+            style={{
+              padding: '6px 20px',
+              fontSize: 14,
+              fontWeight: 600,
+              borderRadius: 8,
+              border: 'none',
+              background: '#ff4a4a',
+              color: '#fff',
+              cursor: 'pointer',
+            }}
+          >
+            Undo ✕
+          </button>
+          <button
+            onClick={confirmMove}
+            style={{
+              padding: '6px 20px',
+              fontSize: 14,
+              fontWeight: 600,
+              borderRadius: 8,
+              border: 'none',
+              background: '#4a9eff',
+              color: '#fff',
+              cursor: 'pointer',
+            }}
+          >
+            Confirm {pendingMove} ✓
+          </button>
+        </div>
       )}
       {gameOver && (
         <p style={{ marginTop: 8, fontWeight: 600, textAlign: 'center' }}>Game Over</p>
