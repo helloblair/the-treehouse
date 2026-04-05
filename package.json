@@ -32,6 +32,8 @@
     "dev:local": "cross-env USE_LOCAL_API=true pnpm start",
     "dev:web": "cross-env DEV_WEB_ONLY=true CHATBOX_BUILD_PLATFORM=web pnpm start",
     "dev:debug": "cross-env MAIN_ARGS=\"--inspect=5858\" pnpm start",
+    "dev:all": "concurrently -n main,body,chess,pet,pioneer,pixelart,tokens -c blue,green,yellow,red,magenta,cyan,white \"pnpm start\" \"cd treehouse-body && pnpm dev\" \"cd treehouse-chess && pnpm dev\" \"cd treehouse-pet && pnpm dev\" \"cd treehouse-pioneer && pnpm dev\" \"cd treehouse-pixelart && pnpm dev\" \"cd treehouse-tokens && pnpm dev\"",
+    "dev:plugins": "concurrently -n body,chess,pet,pioneer,pixelart,tokens -c green,yellow,red,magenta,cyan,white \"cd treehouse-body && pnpm dev\" \"cd treehouse-chess && pnpm dev\" \"cd treehouse-pet && pnpm dev\" \"cd treehouse-pioneer && pnpm dev\" \"cd treehouse-pixelart && pnpm dev\" \"cd treehouse-tokens && pnpm dev\"",
     "start": "electron-vite dev",
     "start:main": "cross-env NODE_ENV=development electronmon -r ts-node/register/transpile-only .",
     "start:preload": "electron-vite build --preload --watch",
