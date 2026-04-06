@@ -31,7 +31,13 @@ export default class Claude extends AbstractAISDKModel {
   }
 
   private isWebPlatform() {
-    return typeof process !== 'undefined' && process.env.CHATBOX_BUILD_PLATFORM === 'web'
+    // Vite inlines CHATBOX_BUILD_PLATFORM at build time; avoid a runtime
+    // `typeof process` guard that can fail in browsers without a polyfill.
+    try {
+      return process.env.CHATBOX_BUILD_PLATFORM === 'web'
+    } catch {
+      return false
+    }
   }
 
   /**
