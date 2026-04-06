@@ -30,7 +30,48 @@ export default class Claude extends AbstractAISDKModel {
     super(options, dependencies)
   }
 
+  private isWebPlatform() {
+    return typeof process !== 'undefined' && process.env.CHATBOX_BUILD_PLATFORM === 'web'
+  }
+
+  /**
+   * Creates a fetch wrapper that redirects Anthropic API calls through the
+   * serverless proxy at /api/claude, keeping the API key server-side.
+   */
+  private createProxyFetch(): typeof globalThis.fetch {
+    const baseFetch = this.options.customFetch || globalThis.fetch
+    return (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+      // Rewrite Anthropic URLs to our proxy, passing the original path as a query param
+      if (url.includes('api.anthropic.com')) {
+        const parsed = new URL(url)
+        const proxyUrl = `/api/claude?path=${encodeURIComponent(parsed.pathname)}`
+        // Strip the api key header — the proxy injects it server-side
+        const headers = new Headers(init?.headers)
+        headers.delete('x-api-key')
+        headers.delete('authorization')
+        headers.delete('anthropic-dangerous-direct-browser-access')
+        return baseFetch(proxyUrl, { ...init, headers })
+      }
+      return baseFetch(input, init)
+    }
+  }
+
   protected getProvider() {
+    // On web deployments without a user-provided key, route through the serverless proxy
+    const useProxy = this.isWebPlatform() && !this.options.claudeApiKey && !this.options.authToken
+
+    if (useProxy) {
+      return createAnthropic({
+        apiKey: 'proxy', // placeholder — the proxy injects the real key server-side
+        baseURL: normalizeClaudeHost(this.options.claudeApiHost).apiHost,
+        fetch: this.createProxyFetch(),
+        headers: {
+          ...this.options.extraHeaders,
+        },
+      })
+    }
+
     const authOptions = this.options.authToken
       ? { authToken: this.options.authToken }
       : { apiKey: this.options.claudeApiKey }

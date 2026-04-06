@@ -167,8 +167,8 @@ Key behaviors:
 
 export function chatSessionSettings(): SessionSettings {
   return {
-    provider: ModelProviderEnum.ChatboxAI,
-    modelId: 'chatboxai-4',
+    provider: ModelProviderEnum.Claude,
+    modelId: 'claude-sonnet-4-6',
     maxContextMessageCount: Number.MAX_SAFE_INTEGER,
   }
 }
