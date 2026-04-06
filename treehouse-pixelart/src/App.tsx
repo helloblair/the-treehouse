@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import './App.css'
 
 const PLUGIN_ID = 'treehouse-pixelart'
-const PLATFORM_ORIGIN = import.meta.env.VITE_PLATFORM_ORIGIN || '*'
+const PLATFORM_ORIGIN = import.meta.env.VITE_PLATFORM_ORIGIN || 'http://localhost:1212'
 const MAX_HISTORY = 50
 
 const DEFAULT_PALETTE = [
@@ -314,13 +314,19 @@ function App() {
           sendResult(callId, { error: 'colors must be a JSON array of hex strings' }, true)
           break
         }
-        if (Array.isArray(colors) && colors.length > 0) {
-          setPalette(colors)
-          setColor(colors[0])
-          sendResult(callId, { success: true, paletteSize: colors.length })
-        } else {
+        if (!Array.isArray(colors) || colors.length === 0) {
           sendResult(callId, { error: 'colors must be a non-empty array of hex strings' }, true)
+          break
         }
+        const hexPattern = /^#[0-9a-fA-F]{6}$/
+        const invalid = colors.filter((c) => !hexPattern.test(c))
+        if (invalid.length > 0) {
+          sendResult(callId, { error: `Invalid hex colors: ${invalid.join(', ')}. Expected format: #RRGGBB` }, true)
+          break
+        }
+        setPalette(colors)
+        setColor(colors[0])
+        sendResult(callId, { success: true, paletteSize: colors.length })
         break
       }
       default:
@@ -412,6 +418,45 @@ function App() {
 
   const cellSize = size <= 16 ? 20 : 12
   const gridPx = size * cellSize
+
+  // Standalone detection: redirect to main app if not in an iframe
+  if (window.parent === window) {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100vh',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        background: '#0f172a',
+        color: '#e2e8f0',
+        textAlign: 'center',
+        padding: 24,
+      }}>
+        <div>
+          <h2 style={{ fontSize: 20, marginBottom: 12, color: '#f8fafc' }}>This app runs inside The Treehouse</h2>
+          <p style={{ fontSize: 14, opacity: 0.7, marginBottom: 16 }}>
+            It's designed to be embedded in the chat experience, not visited directly.
+          </p>
+          <a
+            href="https://thetreehouse.vercel.app"
+            style={{
+              display: 'inline-block',
+              padding: '10px 24px',
+              background: '#3b82f6',
+              color: '#fff',
+              borderRadius: 8,
+              textDecoration: 'none',
+              fontSize: 14,
+              fontWeight: 500,
+            }}
+          >
+            Go to The Treehouse
+          </a>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="pixelart-app">
