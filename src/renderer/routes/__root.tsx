@@ -1,3 +1,4 @@
+import { Analytics } from '@vercel/analytics/next'
 import { type RemoteConfig, Theme } from '@shared/types'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
 import Toasts from '@/components/common/Toasts'
@@ -618,6 +619,7 @@ export const Route = createRootRoute({
       >
         <ThemeProvider theme={theme}>
           <CssBaseline />
+          <Analytics />
           <NiceModal.Provider>
             <ErrorBoundary>
               <Root />

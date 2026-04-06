@@ -3,7 +3,7 @@
   "productName": "xyz.chatboxapp.ce",
   "version": "0.0.1",
   "engines": {
-    "node": ">=20.0.0 <23.0.0",
+    "node": ">=20.0.0",
     "pnpm": ">=10.17.0"
   },
   "private": true,
@@ -294,6 +294,7 @@
     "@mozilla/readability": "^0.5.0",
     "@sentry/node": "^9.28.1",
     "@supabase/supabase-js": "^2.100.1",
+    "@vercel/analytics": "^2.0.1",
     "auto-launch": "^5.0.6",
     "chardet": "^2.1.0",
     "cohere-ai": "^7.17.1",
