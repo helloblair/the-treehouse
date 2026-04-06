@@ -180,10 +180,8 @@ export function advanceDays(state: PioneerGameState, days: number): PioneerGameS
 }
 
 export function resolveCurrentEvent(state: PioneerGameState, choiceIndex: number): PioneerGameState {
-  const s = { ...state, supplies: { ...state.supplies }, party: state.party.map((p) => ({ ...p })), log: [...state.log] }
-
-  const result = applyEvent(s, choiceIndex)
-  s.log.push(result)
+  const { state: s, message } = applyEvent(state, choiceIndex)
+  s.log.push(message)
   s.activeEvent = null
 
   if (!checkGameOver(s)) {

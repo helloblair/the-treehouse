@@ -37,6 +37,7 @@ export interface RandomEvent {
   description: string
   choices: { label: string; outcome: string }[]
   resolved: boolean
+  targetMemberName?: string
 }
 
 export function createInitialState(partyNames: string[], startingMoney: number): PioneerGameState {

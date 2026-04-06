@@ -3,12 +3,14 @@ import type { PioneerGameState } from './lib/gameState'
 import { createInitialState } from './lib/gameState'
 import { advanceDays, resolveCurrentEvent, applyHuntResult, applyRiverResult, tradeAtFort, restAtLandmark, simulateHunt, simulateRiverCrossing } from './lib/engine'
 import { LANDMARKS } from './lib/route'
+import { supabase } from './lib/supabase'
 import TrailMap from './components/TrailMap'
 import Hunt from './components/Hunt'
 import RiverCrossing from './components/RiverCrossing'
 
 const PLUGIN_ID = 'treehouse-pioneer'
-const PLATFORM_ORIGIN = import.meta.env.VITE_PLATFORM_ORIGIN || '*'
+const PLATFORM_ORIGIN = import.meta.env.VITE_PLATFORM_ORIGIN || 'http://localhost:1212'
+const GAME_CACHE_KEY = 'chatbridge_pioneer_cache'
 
 interface ToolCallPayload {
   type: 'TREEHOUSE_TOOL_CALL'
@@ -120,6 +122,141 @@ function serializeState(state: PioneerGameState) {
   }
 }
 
+// --- Supabase persistence helpers ---
+
+function isValidGameState(obj: unknown): obj is PioneerGameState {
+  if (!obj || typeof obj !== 'object') return false
+  const s = obj as Record<string, unknown>
+  return (
+    typeof s.day === 'number' &&
+    typeof s.miles === 'number' &&
+    typeof s.pace === 'string' &&
+    typeof s.rations === 'string' &&
+    s.supplies != null && typeof s.supplies === 'object' &&
+    Array.isArray(s.party) && s.party.length > 0 &&
+    typeof s.phase === 'string' &&
+    Array.isArray(s.log)
+  )
+}
+
+function cacheGameToLocal(game: PioneerGameState, dbId: string) {
+  try {
+    localStorage.setItem(GAME_CACHE_KEY, JSON.stringify({ ...game, _dbId: dbId }))
+  } catch { /* quota exceeded — ignore */ }
+}
+
+function loadGameFromLocal(): { game: PioneerGameState; dbId: string } | null {
+  try {
+    const raw = localStorage.getItem(GAME_CACHE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    const { _dbId, ...game } = parsed
+    return _dbId ? { game: game as PioneerGameState, dbId: _dbId } : null
+  } catch {
+    return null
+  }
+}
+
+function gameToRow(game: PioneerGameState, userId: string) {
+  return {
+    user_id: userId,
+    day: game.day,
+    miles: game.miles,
+    pace: game.pace,
+    rations: game.rations,
+    supplies: game.supplies,
+    party: game.party,
+    current_landmark: game.currentLandmark,
+    next_landmark: game.nextLandmark,
+    miles_until_next_landmark: game.milesUntilNextLandmark,
+    weather: game.weather,
+    month: game.month,
+    phase: game.phase,
+    active_event: game.activeEvent,
+    river_depth: game.riverDepth ?? null,
+    cause_of_death: game.causeOfDeath ?? null,
+    log: game.log.slice(-150),
+  }
+}
+
+function rowToGame(row: Record<string, unknown>): PioneerGameState {
+  return {
+    day: row.day as number,
+    miles: row.miles as number,
+    totalMiles: 2040,
+    pace: row.pace as PioneerGameState['pace'],
+    rations: row.rations as PioneerGameState['rations'],
+    supplies: row.supplies as PioneerGameState['supplies'],
+    party: row.party as PioneerGameState['party'],
+    currentLandmark: row.current_landmark as string,
+    nextLandmark: row.next_landmark as string,
+    milesUntilNextLandmark: row.miles_until_next_landmark as number,
+    weather: row.weather as PioneerGameState['weather'],
+    month: row.month as number,
+    phase: row.phase as PioneerGameState['phase'],
+    activeEvent: (row.active_event as PioneerGameState['activeEvent']) ?? null,
+    riverDepth: row.river_depth as number | undefined,
+    causeOfDeath: row.cause_of_death as string | undefined,
+    log: (row.log as string[]) ?? [],
+  }
+}
+
+async function fetchGameFromDb(userId: string): Promise<{ game: PioneerGameState; dbId: string } | null> {
+  try {
+    const { data, error } = await supabase
+      .from('pioneer_games')
+      .select('*')
+      .eq('user_id', userId)
+      .not('phase', 'in', '("gameover","victory")')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (error) throw error
+    if (data) {
+      const game = rowToGame(data)
+      cacheGameToLocal(game, data.id)
+      return { game, dbId: data.id }
+    }
+    return null
+  } catch (err) {
+    console.warn('[treehouse-pioneer] Supabase fetch failed, using localStorage cache:', err)
+    return loadGameFromLocal()
+  }
+}
+
+async function insertGameToDb(game: PioneerGameState, userId: string): Promise<string | null> {
+  try {
+    const { data, error } = await supabase
+      .from('pioneer_games')
+      .insert(gameToRow(game, userId))
+      .select('id')
+      .single()
+    if (error) throw error
+    cacheGameToLocal(game, data.id)
+    return data.id
+  } catch (err) {
+    console.warn('[treehouse-pioneer] Supabase insert failed:', err)
+    return null
+  }
+}
+
+async function updateGameInDb(dbId: string, game: PioneerGameState, userId: string): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('pioneer_games')
+      .update(gameToRow(game, userId))
+      .eq('id', dbId)
+    if (error) throw error
+    cacheGameToLocal(game, dbId)
+    return true
+  } catch (err) {
+    console.warn('[treehouse-pioneer] Supabase update failed:', err)
+    // Optimistically cache locally
+    cacheGameToLocal(game, dbId)
+    return false
+  }
+}
+
 // Health color dot
 function healthColor(health: string, alive: boolean): string {
   if (!alive) return '#555'
@@ -133,24 +270,75 @@ function healthColor(health: string, alive: boolean): string {
 }
 
 export default function App() {
+  const [userId, setUserId] = useState<string | null>(null)
   const [game, setGame] = useState<PioneerGameState | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const gameRef = useRef<PioneerGameState | null>(null)
+  const userIdRef = useRef<string | null>(null)
+  const dbIdRef = useRef<string | null>(null)
+  const initResolversRef = useRef<Array<() => void>>([])
 
-  // Keep ref in sync
-  useEffect(() => {
-    gameRef.current = game
-  }, [game])
+  // Keep refs in sync
+  useEffect(() => { gameRef.current = game }, [game])
+  useEffect(() => { userIdRef.current = userId }, [userId])
+
+  // Save game state to Supabase (debounced writes)
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const saveToDb = useCallback((state: PioneerGameState) => {
+    clearTimeout(saveTimeoutRef.current)
+    saveTimeoutRef.current = setTimeout(async () => {
+      const uid = userIdRef.current
+      if (!uid) return
+      setSaving(true)
+      if (dbIdRef.current) {
+        await updateGameInDb(dbIdRef.current, state, uid)
+      } else {
+        const newId = await insertGameToDb(state, uid)
+        if (newId) dbIdRef.current = newId
+      }
+      setSaving(false)
+    }, 500)
+  }, [])
 
   const updateGame = useCallback((newState: PioneerGameState) => {
     setGame(newState)
     sendStateUpdate(newState)
+    saveToDb(newState)
     if (newState.phase === 'victory' || newState.phase === 'gameover') {
       sendCompletion(newState)
     }
+  }, [saveToDb])
+
+  // Fetch existing game from Supabase
+  const checkForExistingGame = useCallback(async (uid: string) => {
+    const result = await fetchGameFromDb(uid)
+    if (result) {
+      setGame(result.game)
+      gameRef.current = result.game
+      dbIdRef.current = result.dbId
+    }
+    setLoading(false)
   }, [])
 
   const handleToolCall = useCallback((data: ToolCallPayload) => {
     const { callId, toolName, params } = data.payload
+
+    // Handle init_pioneer — sets userId
+    if (toolName === 'init_pioneer') {
+      const uid = params.userId as string
+      setUserId(uid)
+      userIdRef.current = uid
+      void checkForExistingGame(uid).then(() => {
+        for (const resolve of initResolversRef.current) resolve()
+        initResolversRef.current = []
+        window.parent.postMessage(
+          { type: 'TREEHOUSE_READY', pluginId: PLUGIN_ID },
+          PLATFORM_ORIGIN,
+        )
+      })
+      return
+    }
 
     switch (toolName) {
       case 'start_journey': {
@@ -158,6 +346,8 @@ export default function App() {
         const names = Array.isArray(rawNames) ? rawNames as string[] : ['Pioneer 1', 'Pioneer 2', 'Pioneer 3', 'Pioneer 4', 'Pioneer 5']
         const money = typeof params.starting_money === 'number' ? params.starting_money : 800
         const initial = createInitialState(names.slice(0, 5), Math.max(100, Math.min(1600, money)))
+        // New game — clear old dbId so we insert fresh
+        dbIdRef.current = null
         updateGame(initial)
         sendResult(callId, serializeState(initial))
         break
@@ -274,7 +464,7 @@ export default function App() {
       default:
         sendResult(callId, { error: `Unknown tool: ${toolName}` }, true)
     }
-  }, [updateGame])
+  }, [updateGame, checkForExistingGame])
 
   // postMessage listener
   useEffect(() => {
@@ -285,18 +475,76 @@ export default function App() {
         handleToolCall(data as ToolCallPayload)
       }
       if (data?.type === 'TREEHOUSE_RESTORE_STATE' && data?.pluginId === PLUGIN_ID) {
-        const restored = data.payload?.state as PioneerGameState | null
-        if (restored) setGame(restored)
+        const restored = data.payload?.state
+        if (restored && isValidGameState(restored)) {
+          setGame(restored)
+        }
       }
     }
     window.addEventListener('message', onMessage)
     return () => window.removeEventListener('message', onMessage)
   }, [handleToolCall])
 
-  // Send READY on mount
+  // Send READY on mount so PluginHost can send init_pioneer
   useEffect(() => {
     window.parent.postMessage({ type: 'TREEHOUSE_READY', pluginId: PLUGIN_ID }, PLATFORM_ORIGIN)
   }, [])
+
+  // Standalone detection: redirect to main app if not in an iframe
+  if (window.parent === window) {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100vh',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        background: '#0f172a',
+        color: '#e2e8f0',
+        textAlign: 'center',
+        padding: 24,
+      }}>
+        <div>
+          <h2 style={{ fontSize: 20, marginBottom: 12, color: '#f8fafc' }}>This app runs inside The Treehouse</h2>
+          <p style={{ fontSize: 14, opacity: 0.7, marginBottom: 16 }}>
+            It's designed to be embedded in the chat experience, not visited directly.
+          </p>
+          <a
+            href="https://thetreehouse.vercel.app"
+            style={{
+              display: 'inline-block',
+              padding: '10px 24px',
+              background: '#3b82f6',
+              color: '#fff',
+              borderRadius: 8,
+              textDecoration: 'none',
+              fontSize: 14,
+              fontWeight: 500,
+            }}
+          >
+            Go to The Treehouse
+          </a>
+        </div>
+      </div>
+    )
+  }
+
+  // --- No userId yet ---
+  if (!userId) {
+    return (
+      <div style={{ padding: 24, textAlign: 'center', color: '#888' }}>
+        Connecting...
+      </div>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div style={{ padding: 24, textAlign: 'center', color: '#888' }}>
+        Loading your journey...
+      </div>
+    )
+  }
 
   // --- No game started yet ---
   if (!game) {
@@ -535,6 +783,23 @@ export default function App() {
           <div key={i} style={{ marginBottom: 2 }}>{'> '}{entry}</div>
         ))}
       </div>
+
+      {saving && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: 8,
+            right: 8,
+            background: 'rgba(0,0,0,0.7)',
+            color: '#fff',
+            padding: '4px 10px',
+            borderRadius: 6,
+            fontSize: 12,
+          }}
+        >
+          Saving...
+        </div>
+      )}
     </div>
   )
 }

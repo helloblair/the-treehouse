@@ -26,6 +26,7 @@ const illnessEvents: EventGenerator[] = [
         { label: 'Rest and hope', outcome: 'rest' },
       ],
       resolved: false,
+      targetMemberName: name,
     }
   },
   (state) => {
@@ -39,6 +40,7 @@ const illnessEvents: EventGenerator[] = [
         { label: 'Rest and hope', outcome: 'rest' },
       ],
       resolved: false,
+      targetMemberName: name,
     }
   },
   (state) => {
@@ -52,6 +54,7 @@ const illnessEvents: EventGenerator[] = [
         { label: 'Rest and hope', outcome: 'rest' },
       ],
       resolved: false,
+      targetMemberName: name,
     }
   },
   (state) => {
@@ -65,6 +68,7 @@ const illnessEvents: EventGenerator[] = [
         { label: 'Suck out the venom', outcome: 'rest' },
       ],
       resolved: false,
+      targetMemberName: name,
     }
   },
   (state) => {
@@ -77,6 +81,7 @@ const illnessEvents: EventGenerator[] = [
         { label: 'Splint and rest', outcome: 'rest' },
       ],
       resolved: false,
+      targetMemberName: name,
     }
   },
   (state) => {
@@ -90,6 +95,7 @@ const illnessEvents: EventGenerator[] = [
         { label: 'Rest and hope', outcome: 'rest' },
       ],
       resolved: false,
+      targetMemberName: name,
     }
   },
 ]
@@ -212,7 +218,12 @@ export function rollForEvent(state: PioneerGameState): RandomEvent | null {
 }
 
 function findMemberByEvent(state: PioneerGameState, event: RandomEvent): number {
-  const nameMatch = event.description.match(/^(\w+[\w\s]*)(?= has| was)/)
+  // Prefer explicit target (set when event was generated)
+  if (event.targetMemberName) {
+    return state.party.findIndex((p) => p.name === event.targetMemberName && p.alive)
+  }
+  // Fallback: regex parse (backward compat with saved games that lack targetMemberName)
+  const nameMatch = event.description.match(/^(.+?)(?= has | was )/)
   if (!nameMatch) return -1
   const name = nameMatch[1].trim()
   return state.party.findIndex((p) => p.name === name && p.alive)
@@ -224,10 +235,23 @@ function degradeHealth(current: string): 'good' | 'fair' | 'poor' | 'very poor' 
   return order[Math.min(idx + 1, 3)]
 }
 
-export function applyEvent(state: PioneerGameState, choiceIndex?: number): string {
+export function applyEvent(
+  state: PioneerGameState,
+  choiceIndex?: number,
+): { state: PioneerGameState; message: string } {
   const event = state.activeEvent
-  if (!event) return ''
+  if (!event) return { state, message: '' }
+
+  // Immutable copy — all mutations happen on s, never on the original
+  const s: PioneerGameState = {
+    ...state,
+    supplies: { ...state.supplies },
+    party: state.party.map((p) => ({ ...p })),
+    log: [...state.log],
+  }
+
   const choice = event.choices[choiceIndex ?? 0]
+  let message = ''
 
   switch (event.id) {
     case 'dysentery':
@@ -235,86 +259,103 @@ export function applyEvent(state: PioneerGameState, choiceIndex?: number): strin
     case 'cholera':
     case 'snakebite':
     case 'measles': {
-      const idx = findMemberByEvent(state, event)
+      const idx = findMemberByEvent(s, event)
       if (idx === -1) break
       const severe = event.id === 'cholera' || event.id === 'typhoid'
-      if (choice?.outcome === 'medicine' && state.supplies.medicine > 0) {
-        state.supplies.medicine--
-        state.party[idx].health = degradeHealth(state.party[idx].health)
-        state.party[idx].illness = event.id
-        return `${state.party[idx].name} was treated with medicine. Health declining but stable.`
+      if (choice?.outcome === 'medicine' && s.supplies.medicine > 0) {
+        s.supplies.medicine--
+        s.party[idx].health = degradeHealth(s.party[idx].health)
+        s.party[idx].illness = event.id
+        message = `${s.party[idx].name} was treated with medicine. Health declining but stable.`
       } else {
-        // No medicine or chose to rest
-        state.party[idx].health = degradeHealth(degradeHealth(state.party[idx].health))
-        state.party[idx].illness = event.id
-        if (severe && state.party[idx].health === 'very poor') {
-          state.party[idx].alive = false
-          state.party[idx].health = 'very poor'
-          return `${state.party[idx].name} has died of ${event.id}.`
+        s.party[idx].health = degradeHealth(degradeHealth(s.party[idx].health))
+        s.party[idx].illness = event.id
+        if (severe && s.party[idx].health === 'very poor') {
+          s.party[idx].alive = false
+          message = `${s.party[idx].name} has died of ${event.id}.`
+        } else {
+          message = `${s.party[idx].name} is suffering from ${event.id}.`
         }
-        return `${state.party[idx].name} is suffering from ${event.id}.`
       }
+      break
     }
     case 'broken_arm': {
-      const idx = findMemberByEvent(state, event)
+      const idx = findMemberByEvent(s, event)
       if (idx === -1) break
-      state.party[idx].health = degradeHealth(state.party[idx].health)
-      state.party[idx].illness = 'broken arm'
-      state.day += 2
-      return `${state.party[idx].name} has a broken arm. Lost 2 days resting.`
+      s.party[idx].health = degradeHealth(s.party[idx].health)
+      s.party[idx].illness = 'broken arm'
+      s.day += 2
+      message = `${s.party[idx].name} has a broken arm. Lost 2 days resting.`
+      break
     }
     case 'heavy_rain':
-      state.day += 3
-      return 'Lost 3 days to heavy rains.'
+      s.day += 3
+      message = 'Lost 3 days to heavy rains.'
+      break
     case 'blizzard':
-      state.day += 5
-      state.party.forEach((p) => {
+      s.day += 5
+      s.party.forEach((p) => {
         if (p.alive) p.health = degradeHealth(p.health)
       })
-      return 'Blizzard! Lost 5 days. Everyone\'s health declined.'
+      message = 'Blizzard! Lost 5 days. Everyone\'s health declined.'
+      break
     case 'hailstorm': {
       const foodLoss = rand(20, 50)
-      state.supplies.food = Math.max(0, state.supplies.food - foodLoss)
-      state.supplies.clothing = Math.max(0, state.supplies.clothing - 1)
-      return `Hailstorm damaged supplies. Lost ${foodLoss} lbs of food and 1 set of clothing.`
+      s.supplies.food = Math.max(0, s.supplies.food - foodLoss)
+      s.supplies.clothing = Math.max(0, s.supplies.clothing - 1)
+      message = `Hailstorm damaged supplies. Lost ${foodLoss} lbs of food and 1 set of clothing.`
+      break
     }
     case 'drought':
-      state.party.forEach((p) => {
+      s.party.forEach((p) => {
         if (p.alive) p.health = degradeHealth(p.health)
       })
-      return 'Drought conditions. The oxen and party suffer.'
+      message = 'Drought conditions. The oxen and party suffer.'
+      break
     case 'wagon_wheel':
-      state.day += 3
-      return 'Wagon wheel broken. Lost 3 days repairing.'
+      s.day += 3
+      message = 'Wagon wheel broken. Lost 3 days repairing.'
+      break
     case 'ox_dies':
-      state.supplies.oxen = Math.max(0, state.supplies.oxen - 1)
-      return `An ox has died. You now have ${state.supplies.oxen} oxen.`
+      s.supplies.oxen = Math.max(0, s.supplies.oxen - 1)
+      message = `An ox has died. You now have ${s.supplies.oxen} oxen.`
+      break
     case 'food_spoils': {
       const loss = rand(30, 60)
-      state.supplies.food = Math.max(0, state.supplies.food - loss)
-      return `${loss} lbs of food has spoiled.`
+      s.supplies.food = Math.max(0, s.supplies.food - loss)
+      message = `${loss} lbs of food has spoiled.`
+      break
     }
     case 'clothing_stolen':
-      state.supplies.clothing = Math.max(0, state.supplies.clothing - 1)
-      return 'A set of clothing was stolen in the night.'
+      s.supplies.clothing = Math.max(0, s.supplies.clothing - 1)
+      message = 'A set of clothing was stolen in the night.'
+      break
     case 'samaritan':
-      state.supplies.food += rand(30, 60)
-      return 'A kind traveler shared food with your party.'
+      s.supplies.food += rand(30, 60)
+      message = 'A kind traveler shared food with your party.'
+      break
     case 'abandoned_supplies': {
       const extra = rand(20, 50)
-      state.supplies.food += extra
-      state.supplies.ammunition += rand(2, 5)
-      return `Found abandoned supplies: ${extra} lbs of food and some ammunition.`
+      s.supplies.food += extra
+      s.supplies.ammunition += rand(2, 5)
+      message = `Found abandoned supplies: ${extra} lbs of food and some ammunition.`
+      break
     }
     case 'shallow_river':
-      return 'The river is shallow here. Easy crossing!'
+      message = 'The river is shallow here. Easy crossing!'
+      break
     case 'tail_wind': {
       const bonus = rand(10, 25)
-      state.miles += bonus
-      return `Tailwind! Gained an extra ${bonus} miles.`
+      s.miles += bonus
+      message = `Tailwind! Gained an extra ${bonus} miles.`
+      break
     }
   }
 
-  state.activeEvent = null
-  return 'The event passes without incident.'
+  if (!message) {
+    s.activeEvent = null
+    message = 'The event passes without incident.'
+  }
+
+  return { state: s, message }
 }
