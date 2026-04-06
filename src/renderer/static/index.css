@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap');
+
 /* @tailwind base;
 @tailwind components;
 @tailwind utilities; */
@@ -9,8 +11,6 @@
 .title-bar .controls {
   -webkit-app-region: no-drag;
 }
-
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap');
 
 body {
   margin: 0;

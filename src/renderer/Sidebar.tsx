@@ -222,11 +222,24 @@ export default function Sidebar() {
 
         <PluginSidebar />
 
-        {sidebarMode === 'task' && featureFlags.taskMode ? (
-          <TaskSessionList />
-        ) : (
-          <SessionList sessionListViewportRef={sessionListViewportRef} />
-        )}
+        <div
+          style={{
+            flex: 1,
+            minHeight: 0,
+            margin: '8px 8px 8px',
+            background: 'rgba(255, 255, 255, 0.06)',
+            borderRadius: 12,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          }}
+        >
+          {sidebarMode === 'task' && featureFlags.taskMode ? (
+            <TaskSessionList />
+          ) : (
+            <SessionList sessionListViewportRef={sessionListViewportRef} />
+          )}
+        </div>
 
         <Stack gap={0} px="xs" pb="xs">
           <Divider />
@@ -241,15 +254,6 @@ export default function Sidebar() {
                 <Button variant="light" fullWidth data-testid="new-chat-button" onClick={handleCreateNewSession}>
                   <ScalableIcon icon={IconCirclePlus} className="mr-2" />
                   {t('New Chat')}
-                </Button>
-                <Button
-                  variant="light"
-                  fullWidth
-                  data-testid="new-image-button"
-                  onClick={handleCreateNewPictureSession}
-                >
-                  <ScalableIcon icon={IconPhotoPlus} className="mr-2" />
-                  {t('Create Image')}
                 </Button>
               </>
             )}
@@ -367,22 +371,6 @@ export default function Sidebar() {
                   p="xs"
                 />
               )}
-              <NavLink
-                c="chatbox-tertiary"
-                className="rounded"
-                label={
-                  <Flex align="center" gap={6}>
-                    <span>{`${t('About')} ${/\d/.test(versionHook.version) ? `(${versionHook.version})` : ''}`}</span>
-                    {CHATBOX_BUILD_PLATFORM === 'android' && versionHook.needCheckUpdate && (
-                      <Box w={8} h={8} miw={8} bg="chatbox-brand" style={{ borderRadius: '50%' }} />
-                    )}
-                  </Flex>
-                }
-                leftSection={<ScalableIcon icon={IconInfoCircle} size={20} />}
-                onClick={() => navigate({ to: '/about' })}
-                variant="light"
-                p="xs"
-              />
               <NavLink
                 c="chatbox-error"
                 className="rounded"
