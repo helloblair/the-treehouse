@@ -50,18 +50,19 @@ BEGIN
          reviewed_at = now()
    WHERE id = p_submission_id;
 
-  -- Award tokens to student
+  -- Award tokens to student (token_wallets/token_transactions use TEXT user_id)
   INSERT INTO token_transactions (user_id, type, amount, reason, subject)
-  VALUES (v_student_id, 'earn', v_token_value, 'Assignment approved', (
+  VALUES (v_student_id::text, 'earn', v_token_value, 'Assignment approved', (
     SELECT subject FROM assignments WHERE id = v_assignment_id
   ));
 
   UPDATE token_wallets
      SET balance = balance + v_token_value,
          lifetime_earned = lifetime_earned + v_token_value
-   WHERE user_id = v_student_id;
+   WHERE user_id = v_student_id::text;
 
   -- Award XP to student's pet (+20 XP, +10 happiness, auto-evolve)
+  -- pets.user_id is UUID, no cast needed
   UPDATE pets
      SET xp = xp + 20,
          happiness = LEAST(100, happiness + 10),
@@ -70,7 +71,7 @@ BEGIN
            WHEN xp + 20 >= 100 THEN 'junior'
            ELSE 'puppy'
          END
-   WHERE user_id = v_student_id::text
+   WHERE user_id = v_student_id
   RETURNING xp, growth_stage INTO v_pet_new_xp, v_pet_new_stage;
 
   RETURN json_build_object(
