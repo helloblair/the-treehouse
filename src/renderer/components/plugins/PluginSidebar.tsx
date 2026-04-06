@@ -1,4 +1,4 @@
-import { NavLink, Stack, Text } from '@mantine/core'
+import { Stack, Text, SimpleGrid, UnstyledButton } from '@mantine/core'
 import { pluginStore, usePluginStore } from '@/stores/pluginStore'
 
 export default function PluginSidebar() {
@@ -9,44 +9,88 @@ export default function PluginSidebar() {
 
   return (
     <Stack gap={0} px="xs" pt="xs">
-      <Text size="xs" fw={600} c="dimmed" px="xs" pb={4}>
-        Plugins
+      <Text
+        size="xs"
+        fw={600}
+        px="xs"
+        pb={4}
+        style={{
+          color: 'var(--treehouse-sidebar-label, var(--mantine-color-dimmed))',
+          letterSpacing: 1.5,
+          fontSize: 11,
+          fontFamily: 'Funnel Sans, Inter, sans-serif',
+        }}
+      >
+        PLUG-INS
       </Text>
-      {manifests.map((plugin) => (
-        <NavLink
-          key={plugin.id}
-          label={plugin.name}
-          description={degraded[plugin.id] ? 'unavailable' : undefined}
-          active={plugin.enabled}
-          onClick={() => {
-            // Toggle enabled state
-            pluginStore.getState().registerPlugin({ ...plugin, enabled: !plugin.enabled })
-            // If disabling, also dismiss if it was active
-            if (plugin.enabled && pluginStore.getState().activePluginId === plugin.id) {
-              pluginStore.getState().dismissPlugin()
-            }
-          }}
-          leftSection={
-            degraded[plugin.id] ? (
-              <span style={{ fontSize: 14, lineHeight: 1 }} title="Plugin unavailable — too many failures">&#9888;</span>
-            ) : (
-              <div
+      <SimpleGrid cols={3} spacing={8} px={4}>
+        {manifests.map((plugin) => (
+          <UnstyledButton
+            key={plugin.id}
+            onClick={() => {
+              pluginStore.getState().registerPlugin({ ...plugin, enabled: !plugin.enabled })
+              if (plugin.enabled && pluginStore.getState().activePluginId === plugin.id) {
+                pluginStore.getState().dismissPlugin()
+              }
+            }}
+            style={{
+              borderRadius: 10,
+              overflow: 'hidden',
+              opacity: degraded[plugin.id] ? 0.5 : 1,
+              background: plugin.enabled
+                ? 'var(--treehouse-sidebar-bg-accent)'
+                : 'rgba(255, 255, 255, 0.06)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+            }}
+          >
+            {/* Icon area */}
+            <div
+              style={{
+                width: '100%',
+                height: 56,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 24,
+                color: plugin.enabled
+                  ? 'var(--treehouse-sidebar-text, #FFFDF7)'
+                  : 'var(--treehouse-sidebar-text, #FFFDF7)',
+              }}
+            >
+              {degraded[plugin.id] ? '⚠' : '🧩'}
+            </div>
+
+            {/* Label area — fixed height, centered, wraps at spaces */}
+            <div
+              style={{
+                width: '100%',
+                height: 28,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                paddingBottom: 6,
+              }}
+            >
+              <Text
                 style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: '50%',
-                  backgroundColor: plugin.enabled
-                    ? 'var(--mantine-color-blue-filled)'
-                    : 'var(--mantine-color-gray-5)',
+                  color: 'var(--treehouse-sidebar-text, #FFFDF7)',
+                  fontFamily: 'Inter, sans-serif',
+                  fontSize: 10,
+                  fontWeight: 600,
+                  lineHeight: 1.2,
+                  textAlign: 'center',
+                  wordBreak: 'normal',
+                  overflowWrap: 'break-word',
                 }}
-              />
-            )
-          }
-          styles={{
-            root: { borderRadius: 6, opacity: degraded[plugin.id] ? 0.5 : 1 },
-          }}
-        />
-      ))}
+              >
+                {plugin.name}
+              </Text>
+            </div>
+          </UnstyledButton>
+        ))}
+      </SimpleGrid>
     </Stack>
   )
 }
