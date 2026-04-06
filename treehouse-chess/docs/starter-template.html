@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<!--
+  The Treehouse Plugin Starter Template
+
+  This file implements the minimum required contract to build a Treehouse plugin.
+  Copy this file, rename it, and replace the demo logic with your own.
+
+  Required steps:
+  1. Post TREEHOUSE_READY when your app is loaded
+  2. Listen for TREEHOUSE_TOOL_CALL and respond with TREEHOUSE_TOOL_RESULT
+  3. Post TREEHOUSE_COMPLETION when your app's task is finished
+
+  Optional:
+  - Post TREEHOUSE_STATE_UPDATE to cache state in the platform
+  - Post TREEHOUSE_ERROR if something goes wrong
+-->
+<html lang="en"> <!-- lang attribute for accessibility -->
+<head>
+  <meta charset="UTF-8"> <!-- Ensures correct character encoding -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"> <!-- Responsive layout inside the iframe -->
+  <title>Treehouse Starter Plugin</title> <!-- Page title (visible in browser tab if opened standalone) -->
+  <style>
+    /* Reset default margins so the plugin fills the iframe cleanly */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    /* Full-height body with centered content and a friendly font */
+    body {
+      font-family: system-ui, -apple-system, sans-serif; /* Use the system font for a native feel */
+      display: flex; /* Flexbox to center everything vertically and horizontally */
+      flex-direction: column; /* Stack children top to bottom */
+      align-items: center; /* Horizontal centering */
+      justify-content: center; /* Vertical centering */
+      min-height: 100vh; /* Fill the full iframe height */
+      background: #f8f9fa; /* Light background to distinguish from the platform chrome */
+      color: #333; /* Dark text for readability */
+      padding: 24px; /* Breathing room around edges */
+    }
+
+    /* Main heading style */
+    h1 {
+      font-size: 1.5rem; /* Readable but not overwhelming inside a side panel */
+      margin-bottom: 12px; /* Space between heading and status */
+    }
+
+    /* Status message that updates as the plugin lifecycle progresses */
+    #status {
+      color: #666; /* Muted color for secondary info */
+      margin-bottom: 24px; /* Space before the button */
+      text-align: center; /* Center multiline status text */
+    }
+
+    /* The "Complete Task" button */
+    button {
+      padding: 12px 32px; /* Large click target for young students */
+      font-size: 1rem; /* Readable button text */
+      border: none; /* Clean flat design */
+      border-radius: 8px; /* Rounded corners */
+      background: #4c6ef5; /* Blue primary action color */
+      color: white; /* White text on blue background */
+      cursor: pointer; /* Pointer cursor indicates clickability */
+      transition: background 0.2s; /* Smooth hover effect */
+    }
+
+    /* Darken button on hover for visual feedback */
+    button:hover { background: #3b5bdb; }
+
+    /* Dim button when disabled so the user knows it's not clickable yet */
+    button:disabled { background: #adb5bd; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+
+  <h1>Starter Plugin</h1> <!-- The plugin heading — replace with your app name -->
+
+  <p id="status">Loading...</p> <!-- Shows current lifecycle state to the user -->
+
+  <button id="completeBtn" disabled>Complete Task</button> <!-- Disabled until TREEHOUSE_READY fires -->
+
+  <script>
+    // ─── CONFIGURATION ──────────────────────────────────────────────────
+
+    // Your plugin's unique ID — must match the id in your manifest
+    var PLUGIN_ID = 'treehouse-starter';
+
+    // The platform origin for postMessage security — in production, set this to your deployed platform URL
+    var PLATFORM_ORIGIN = '*'; // Use '*' for local dev; in production use e.g. 'https://thetreehouse.vercel.app'
+
+    // ─── DOM REFERENCES ─────────────────────────────────────────────────
+
+    // Cache DOM elements so we don't query the document repeatedly
+    var statusEl = document.getElementById('status');
+    var completeBtn = document.getElementById('completeBtn');
+
+    // ─── STEP 1: POST TREEHOUSE_READY ───────────────────────────────────
+
+    // When the page finishes loading, tell the platform we're ready to receive tool calls
+    window.addEventListener('load', function () {
+      // Post the READY message to the parent window (the Treehouse platform)
+      window.parent.postMessage({
+        type: 'TREEHOUSE_READY',       // Required: tells the platform this plugin has loaded
+        pluginId: PLUGIN_ID,           // Required: identifies which plugin sent the message
+        payload: {}                    // Required: empty object — no data needed for READY
+      }, PLATFORM_ORIGIN);             // Security: restricts which origin can receive this message
+
+      // Update the UI to show we're ready
+      statusEl.textContent = 'Ready — waiting for Claude to call a tool...';
+
+      // Enable the complete button now that we're loaded
+      completeBtn.disabled = false;
+    });
+
+    // ─── STEP 2: LISTEN FOR TREEHOUSE_TOOL_CALL ─────────────────────────
+
+    // Listen for postMessage events from the parent window
+    window.addEventListener('message', function (event) {
+
+      // SECURITY: In production, validate the origin matches your platform URL
+      // Example: if (event.origin !== 'https://thetreehouse.vercel.app') return;
+      // For local development with PLATFORM_ORIGIN='*', we skip strict origin checks
+
+      // Grab the message data
+      var data = event.data;
+
+      // Ignore messages that aren't for this plugin
+      if (!data || !data.type) return;                      // No data or no type — not a Treehouse message
+      if (data.pluginId !== PLUGIN_ID) return;              // Message is for a different plugin
+
+      // ─── HANDLE TOOL CALLS ──────────────────────────────────────────
+
+      if (data.type === 'TREEHOUSE_TOOL_CALL') {
+        // Extract the tool call details from the payload
+        var callId = data.payload.callId;       // Unique ID for this specific call — must echo it back
+        var toolName = data.payload.toolName;   // Which tool Claude invoked
+        var params = data.payload.params;       // Parameters Claude passed to the tool
+
+        // Route to the correct handler based on tool name
+        if (toolName === 'say_hello') {
+          // Update UI to show the tool was called
+          statusEl.textContent = 'Claude called say_hello!';
+
+          // Build the tool result — this is what Claude will see as the tool's response
+          var result = { message: 'Hello from The Treehouse plugin!' };
+
+          // Send the result back to the platform
+          window.parent.postMessage({
+            type: 'TREEHOUSE_TOOL_RESULT',   // Required: tells the platform this is a tool response
+            pluginId: PLUGIN_ID,             // Required: identifies which plugin is responding
+            payload: {
+              callId: callId,                // Required: must match the callId from the TOOL_CALL
+              result: result,                // Required: the data Claude will receive
+              isError: false                 // Optional: false means success (default)
+            }
+          }, PLATFORM_ORIGIN);               // Security: target origin for the message
+
+        } else {
+          // Unknown tool — send an error result so Claude knows what happened
+          window.parent.postMessage({
+            type: 'TREEHOUSE_TOOL_RESULT',   // Still a TOOL_RESULT — errors go through the same channel
+            pluginId: PLUGIN_ID,             // Same plugin ID
+            payload: {
+              callId: callId,                // Echo the callId so the platform can match the response
+              result: 'Unknown tool: ' + toolName,  // Error message Claude will see
+              isError: true                  // Tells the platform to reject the promise
+            }
+          }, PLATFORM_ORIGIN);
+        }
+      }
+
+      // ─── HANDLE STATE RESTORE ─────────────────────────────────────────
+
+      if (data.type === 'TREEHOUSE_RESTORE_STATE') {
+        // The platform sends cached state after TREEHOUSE_READY
+        var restoredState = data.payload.state;   // The state object you previously saved
+
+        // Restore your UI from the saved state here
+        // Example: if (restoredState.score) updateScore(restoredState.score);
+
+        // Update status to show state was restored
+        statusEl.textContent = 'State restored from previous session!';
+      }
+    });
+
+    // ─── STEP 3: POST TREEHOUSE_COMPLETION ──────────────────────────────
+
+    // When the user clicks "Complete Task", tell the platform the task is done
+    completeBtn.addEventListener('click', function () {
+      // Post the COMPLETION message to the parent window
+      window.parent.postMessage({
+        type: 'TREEHOUSE_COMPLETION',    // Required: tells the platform the user finished their task
+        pluginId: PLUGIN_ID,             // Required: identifies which plugin completed
+        payload: {}                      // Required: empty object — no data needed
+      }, PLATFORM_ORIGIN);               // Security: target origin
+
+      // Update UI to show completion was sent
+      statusEl.textContent = 'Task complete! Claude will respond in chat.';
+
+      // Disable the button to prevent double-sends
+      completeBtn.disabled = true;
+    });
+
+    // ─── OPTIONAL: STATE UPDATES ────────────────────────────────────────
+
+    // Example: save state whenever something important changes
+    // Call this function from your app logic when state changes
+    function saveState(stateObject) {
+      window.parent.postMessage({
+        type: 'TREEHOUSE_STATE_UPDATE',  // Tells the platform to cache this state
+        pluginId: PLUGIN_ID,             // Identifies the plugin
+        payload: {
+          state: stateObject             // Any JSON-serializable object — restored via TREEHOUSE_RESTORE_STATE
+        }
+      }, PLATFORM_ORIGIN);
+    }
+
+    // ─── OPTIONAL: ERROR REPORTING ──────────────────────────────────────
+
+    // Example: report a non-fatal error to the platform
+    function reportError(message, isFatal) {
+      window.parent.postMessage({
+        type: 'TREEHOUSE_ERROR',         // Tells the platform something went wrong
+        pluginId: PLUGIN_ID,             // Identifies the plugin
+        payload: {
+          message: message,              // Human-readable error description
+          fatal: isFatal || false        // If true, the plugin is dismissed and a recovery message is sent
+        }
+      }, PLATFORM_ORIGIN);
+    }
+  </script>
+
+</body>
+</html>
