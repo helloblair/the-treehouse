@@ -4,6 +4,11 @@ import * as atoms from './atoms'
 import { settingsStore } from './settingsStore'
 
 export function needEditSetting() {
+  // Web builds use a serverless proxy — no client-side API key needed
+  if (process.env.CHATBOX_BUILD_PLATFORM === 'web') {
+    return false
+  }
+
   const settings = settingsStore.getState()
 
   // 激活了chatbox ai
