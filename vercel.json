@@ -4,7 +4,7 @@
   "installCommand": "pnpm install",
   "framework": null,
   "functions": {
-    "api/claude.ts": { "runtime": "@vercel/edge" }
+    "api/claude.ts": {}
   },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
