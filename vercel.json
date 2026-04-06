@@ -1,0 +1,9 @@
+{
+  "buildCommand": "cross-env CHATBOX_BUILD_PLATFORM=web electron-vite build",
+  "outputDirectory": "release/app/dist/renderer",
+  "installCommand": "pnpm install",
+  "framework": null,
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}

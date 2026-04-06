@@ -2,6 +2,8 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useCallback, useState } from 'react'
 import { setAuthToken } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
+import TreehouseIcon from '@/components/TreehouseIcon'
+import { AuthTexture } from '@/components/TreehouseTexture'
 
 export const Route = createFileRoute('/auth')({
   component: AuthPage,
@@ -66,9 +68,6 @@ function AuthPage() {
 
           // If email confirmation is required, signUp returns a user but no session
           if (signUpData?.user && !signUpData?.session) {
-            // User was created but needs to confirm — auto sign-in won't work yet.
-            // For dev/classroom use, try signing in immediately (works when
-            // "Confirm email" is disabled in Supabase Auth settings).
             const { data: retryData, error: retryError } = await supabase!.auth.signInWithPassword({
               email,
               password,
@@ -112,40 +111,45 @@ function AuthPage() {
 
   return (
     <div
+      className="treehouse-auth-bg"
       style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         minHeight: '100vh',
-        background: 'var(--chatbox-background-primary, #f8f9fa)',
       }}
     >
+      <AuthTexture />
       <div
         style={{
           width: '100%',
           maxWidth: 400,
-          padding: 32,
+          padding: 24,
           borderRadius: 12,
-          background: 'var(--chatbox-background-secondary, #fff)',
-          boxShadow: '0 2px 16px rgba(0,0,0,0.08)',
+          background: 'var(--chatbox-background-secondary)',
+          boxShadow: '0 8px 40px rgba(0,0,0,0.2), 0 0 80px rgba(0,0,0,0.05)',
         }}
       >
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+          <TreehouseIcon size={100} />
+        </div>
         <h1
           style={{
-            margin: '0 0 8px',
-            fontSize: 24,
+            margin: '0 0 4px',
+            fontSize: 28,
             fontWeight: 700,
-            color: 'var(--chatbox-tint-primary, #212529)',
+            color: 'var(--chatbox-tint-primary)',
             textAlign: 'center',
+            fontFamily: 'Nunito, sans-serif',
           }}
         >
           The Treehouse
         </h1>
         <p
           style={{
-            margin: '0 0 24px',
+            margin: '0 0 20px',
             fontSize: 14,
-            color: 'var(--chatbox-tint-secondary, #868e96)',
+            color: 'var(--chatbox-tint-tertiary)',
             textAlign: 'center',
           }}
         >
@@ -153,7 +157,7 @@ function AuthPage() {
         </p>
 
         <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: 16 }}>
+          <div style={{ marginBottom: 12 }}>
             <label
               htmlFor="email"
               style={{
@@ -161,7 +165,7 @@ function AuthPage() {
                 marginBottom: 6,
                 fontSize: 14,
                 fontWeight: 600,
-                color: 'var(--chatbox-tint-primary, #212529)',
+                color: 'var(--chatbox-tint-primary)',
               }}
             >
               Email
@@ -178,17 +182,17 @@ function AuthPage() {
                 width: '100%',
                 padding: '8px 12px',
                 fontSize: 14,
-                border: '1px solid var(--chatbox-border-primary, #dee2e6)',
+                border: '1px solid var(--chatbox-border-primary)',
                 borderRadius: 8,
                 outline: 'none',
-                background: 'var(--chatbox-background-primary, #f8f9fa)',
-                color: 'var(--chatbox-tint-primary, #212529)',
+                background: 'var(--chatbox-background-primary)',
+                color: 'var(--chatbox-tint-primary)',
                 boxSizing: 'border-box',
               }}
             />
           </div>
 
-          <div style={{ marginBottom: 24 }}>
+          <div style={{ marginBottom: 16 }}>
             <label
               htmlFor="password"
               style={{
@@ -196,7 +200,7 @@ function AuthPage() {
                 marginBottom: 6,
                 fontSize: 14,
                 fontWeight: 600,
-                color: 'var(--chatbox-tint-primary, #212529)',
+                color: 'var(--chatbox-tint-primary)',
               }}
             >
               Password
@@ -212,25 +216,25 @@ function AuthPage() {
                 width: '100%',
                 padding: '8px 12px',
                 fontSize: 14,
-                border: '1px solid var(--chatbox-border-primary, #dee2e6)',
+                border: '1px solid var(--chatbox-border-primary)',
                 borderRadius: 8,
                 outline: 'none',
-                background: 'var(--chatbox-background-primary, #f8f9fa)',
-                color: 'var(--chatbox-tint-primary, #212529)',
+                background: 'var(--chatbox-background-primary)',
+                color: 'var(--chatbox-tint-primary)',
                 boxSizing: 'border-box',
               }}
             />
           </div>
 
-          {/* Role selection */}
-          <div style={{ marginBottom: 16 }}>
+          {/* Role selection — side-by-side buttons */}
+          <div style={{ marginBottom: 12 }}>
             <label
               style={{
                 display: 'block',
                 marginBottom: 6,
                 fontSize: 14,
                 fontWeight: 600,
-                color: 'var(--chatbox-tint-primary, #212529)',
+                color: 'var(--chatbox-tint-primary)',
               }}
             >
               I am a...
@@ -247,9 +251,9 @@ function AuthPage() {
                     fontSize: 14,
                     fontWeight: 600,
                     borderRadius: 8,
-                    border: role === r ? '2px solid var(--chatbox-tint-brand, #228be6)' : '1px solid var(--chatbox-border-primary, #dee2e6)',
-                    background: role === r ? 'var(--chatbox-tint-brand, #228be6)' : 'var(--chatbox-background-primary, #f8f9fa)',
-                    color: role === r ? '#fff' : 'var(--chatbox-tint-primary, #212529)',
+                    border: role === r ? '2px solid var(--chatbox-tint-brand)' : '1px solid var(--chatbox-border-primary)',
+                    background: role === r ? 'var(--chatbox-tint-brand)' : 'var(--chatbox-background-primary)',
+                    color: role === r ? '#fff' : 'var(--chatbox-tint-primary)',
                     cursor: 'pointer',
                     textTransform: 'capitalize',
                   }}
@@ -262,7 +266,7 @@ function AuthPage() {
 
           {/* Teacher code */}
           {role === 'teacher' && (
-            <div style={{ marginBottom: 16 }}>
+            <div style={{ marginBottom: 12 }}>
               <label
                 htmlFor="teacherCode"
                 style={{
@@ -270,7 +274,7 @@ function AuthPage() {
                   marginBottom: 6,
                   fontSize: 14,
                   fontWeight: 600,
-                  color: 'var(--chatbox-tint-primary, #212529)',
+                  color: 'var(--chatbox-tint-primary)',
                 }}
               >
                 Teacher Code
@@ -286,11 +290,11 @@ function AuthPage() {
                   width: '100%',
                   padding: '8px 12px',
                   fontSize: 14,
-                  border: '1px solid var(--chatbox-border-primary, #dee2e6)',
+                  border: '1px solid var(--chatbox-border-primary)',
                   borderRadius: 8,
                   outline: 'none',
-                  background: 'var(--chatbox-background-primary, #f8f9fa)',
-                  color: 'var(--chatbox-tint-primary, #212529)',
+                  background: 'var(--chatbox-background-primary)',
+                  color: 'var(--chatbox-tint-primary)',
                   boxSizing: 'border-box',
                 }}
               />
@@ -300,9 +304,9 @@ function AuthPage() {
           {error && (
             <p
               style={{
-                margin: '0 0 16px',
+                margin: '0 0 12px',
                 fontSize: 13,
-                color: 'var(--chatbox-tint-error, #e03131)',
+                color: 'var(--chatbox-tint-error)',
                 textAlign: 'center',
               }}
             >
@@ -319,9 +323,9 @@ function AuthPage() {
               fontSize: 14,
               fontWeight: 600,
               color: '#fff',
-              background: 'var(--chatbox-tint-brand, #228be6)',
+              background: 'var(--treehouse-accent, var(--chatbox-tint-brand))',
               border: 'none',
-              borderRadius: 8,
+              borderRadius: 22,
               cursor: isSubmitting ? 'not-allowed' : 'pointer',
               opacity: isSubmitting ? 0.7 : 1,
             }}
