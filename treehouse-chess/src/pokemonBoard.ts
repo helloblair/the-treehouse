@@ -4,7 +4,6 @@ import type { CSSProperties } from 'react'
 const BLK = '#0d0d0d' // board background
 const RED = '#dc2626' // pokeball top
 const WHT = '#f0f0f0' // pokeball bottom
-const BAND = '#2a2a2a' // center band
 const BTN = '#ffffff' // center button
 
 // Center 4x4 pokeball accent (c-f, ranks 3-6) with diagonal corner cuts
