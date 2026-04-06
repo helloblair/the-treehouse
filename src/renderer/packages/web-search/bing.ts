@@ -11,7 +11,7 @@ export class BingSearch extends WebSearch {
   private async fetchSerp(query: string, signal?: AbortSignal) {
     const html = await this.fetch('https://www.bing.com/search', {
       method: 'GET',
-      query: { q: query },
+      query: { q: query, safeSearch: 'Strict' },
       signal,
     })
     return html as string

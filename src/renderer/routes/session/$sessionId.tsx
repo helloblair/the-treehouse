@@ -173,7 +173,7 @@ function RouteComponent() {
     <div className="flex flex-col h-full">
       <Header session={currentSession} />
 
-      <div className={`flex flex-1 min-h-0 ${hasActivePlugin ? 'flex-row' : 'flex-col'}`}>
+      <div className={`flex flex-1 min-h-0 overflow-hidden ${hasActivePlugin ? 'flex-row' : 'flex-col'}`}>
         {/* Chat column */}
         <div className="flex flex-col flex-1 min-w-0 min-h-0">
           {/* MessageList 设置 key，确保每个 session 对应新的 MessageList 实例 */}

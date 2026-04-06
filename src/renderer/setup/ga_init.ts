@@ -1,8 +1,3 @@
-import platforms from '@/platform'
-;(() => {
-  try {
-    platforms.initTracking()
-  } catch (e) {
-    console.error(e)
-  }
-})()
+// Analytics disabled — this is a children's educational platform (COPPA compliance).
+// No tracking scripts are loaded.
+export {}

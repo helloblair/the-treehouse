@@ -58,8 +58,13 @@ export class TavilySearch extends WebSearch {
       query,
       search_depth: this.searchDepth,
       max_results: this.maxResults,
+      topic: 'general',
       include_domains: [],
-      exclude_domains: [],
+      // Block adult/inappropriate domains — child safety (COPPA)
+      exclude_domains: [
+        'reddit.com', 'twitter.com', 'x.com', 'tiktok.com',
+        'instagram.com', 'facebook.com', '4chan.org',
+      ],
     }
 
     if (!this.isNullOrNone(this.timeRange)) {

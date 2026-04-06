@@ -177,7 +177,7 @@ export function Artifact(props: { htmlCode: string; reloadSign?: number; classNa
     if (!ref.current) {
       return
     }
-    ref.current.contentWindow?.postMessage({ type, code }, '*')
+    ref.current.contentWindow?.postMessage({ type, code }, new URL(iframeOrigin).origin)
   }
   // 当 reloadSign 改变时，重新加载 iframe 内容
   useEffect(() => {
