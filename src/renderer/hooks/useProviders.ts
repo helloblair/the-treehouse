@@ -30,7 +30,11 @@ export const useProviders = () => {
               models: chatboxAIModels,
             }
           } else if (
-            (!p.isCustom && (providerSettings?.apiKey || isUsingOAuth(providerSettings || {}, platform.type))) ||
+            (!p.isCustom &&
+              (providerSettings?.apiKey ||
+                isUsingOAuth(providerSettings || {}, platform.type) ||
+                // Web builds route Claude through the serverless proxy — no client-side key needed
+                (process.env.CHATBOX_BUILD_PLATFORM === 'web' && p.id === ModelProviderEnum.Claude))) ||
             ((p.isCustom || p.id === ModelProviderEnum.Ollama || p.id === ModelProviderEnum.LMStudio) &&
               providerSettings?.models?.length)
           ) {

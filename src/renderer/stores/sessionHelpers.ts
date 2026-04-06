@@ -594,7 +594,11 @@ export function initEmptyChatSession(): Omit<Session, 'id'> {
             provider: settings.defaultChatModel.provider,
             modelId: settings.defaultChatModel.model,
           }
-        : lastUsedChatModel),
+        : lastUsedChatModel
+          // Web builds use the Claude proxy — default to Sonnet for new users
+          ?? (process.env.CHATBOX_BUILD_PLATFORM === 'web'
+            ? { provider: 'claude', modelId: 'claude-sonnet-4-6' }
+            : undefined)),
     },
   }
   if (settings.defaultPrompt) {
