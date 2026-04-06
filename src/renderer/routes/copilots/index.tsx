@@ -1,11 +1,12 @@
 import NiceModal from '@ebay/nice-modal-react'
-import { Button, Flex, Stack, Switch, Text, Title } from '@mantine/core'
+import { Badge, Button, Flex, Stack, Switch, Text, Title } from '@mantine/core'
 import type { CopilotDetail } from '@shared/types'
-import { IconChevronRight, IconPlus } from '@tabler/icons-react'
+import { IconChevronRight, IconPlus, IconShieldCheck } from '@tabler/icons-react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { ScalableIcon } from '@/components/common/ScalableIcon'
-import { useMyCopilots, useRemoteCopilotsByCursor } from '@/hooks/useCopilots'
+import { useAuth } from '@/hooks/useAuth'
+import { useApprovedCopilots, useMyCopilots, useRemoteCopilotsByCursor } from '@/hooks/useCopilots'
 import { useUIStore } from '@/stores/uiStore'
 import CopilotItem from './-components/CopilotItem'
 
@@ -18,8 +19,12 @@ const MAX_ITEMS_PER_SECTION = 6
 function Copilots() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const isTeacher = user?.role === 'teacher'
+
   const store = useMyCopilots()
   const { copilots: remoteCopilots } = useRemoteCopilotsByCursor({ limit: MAX_ITEMS_PER_SECTION })
+  const { copilots: approvedCopilots, approve, revoke, isApproved } = useApprovedCopilots()
   const showCopilotsInNewSession = useUIStore((s) => s.showCopilotsInNewSession)
   const setShowCopilotsInNewSession = useUIStore((s) => s.setShowCopilotsInNewSession)
 
@@ -43,6 +48,37 @@ function Copilots() {
     })
   }
 
+  // Student view: only approved copilots
+  if (!isTeacher) {
+    return (
+      <Stack px="sm" py="xl" gap="lg" className="max-w-7xl">
+        <section>
+          <Flex align="center" gap="md" mb="md">
+            <ScalableIcon icon={IconShieldCheck} size={20} className="text-green-600" />
+            <Title order={5} c="chatbox-primary" className="font-normal">
+              {t('Approved Copilots')}
+            </Title>
+          </Flex>
+
+          {approvedCopilots.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {approvedCopilots.map((copilot) => (
+                <CopilotItem key={copilot.id} copilot={copilot} />
+              ))}
+            </div>
+          ) : (
+            <div className="py-8 text-center">
+              <Text c="dimmed" size="sm">
+                {t('Your teacher hasn\'t approved any copilots yet.')}
+              </Text>
+            </div>
+          )}
+        </section>
+      </Stack>
+    )
+  }
+
+  // Teacher view: full experience with approve actions
   return (
     <Stack px="sm" py="xl" gap="lg" className="max-w-7xl">
       {/* My Created & Added Copilots Section */}
@@ -81,7 +117,13 @@ function Copilots() {
         {myCopilotsList.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {myCopilotsList.map((copilot) => (
-              <CopilotItem key={copilot.id} copilot={copilot} />
+              <CopilotItem
+                key={copilot.id}
+                copilot={copilot}
+                onApprove={approve}
+                onRevoke={revoke}
+                isApproved={isApproved(copilot.id)}
+              />
             ))}
           </div>
         ) : (
@@ -117,11 +159,50 @@ function Copilots() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {remoteCopilots.map((copilot) => (
-              <CopilotItem key={copilot.id} type="remote" copilot={copilot} />
+              <CopilotItem
+                key={copilot.id}
+                type="remote"
+                copilot={copilot}
+                onApprove={approve}
+                onRevoke={revoke}
+                isApproved={isApproved(copilot.id)}
+              />
             ))}
           </div>
         </section>
       )}
+
+      {/* Approved for Students Section */}
+      <section>
+        <Flex align="center" gap="md" mb="md">
+          <ScalableIcon icon={IconShieldCheck} size={20} className="text-green-600" />
+          <Title order={5} c="chatbox-primary" className="font-normal">
+            {t('Approved for Students')}
+          </Title>
+          <Badge size="sm" variant="light" color="green">
+            {approvedCopilots.length}
+          </Badge>
+        </Flex>
+
+        {approvedCopilots.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {approvedCopilots.map((copilot) => (
+              <CopilotItem
+                key={copilot.id}
+                copilot={copilot}
+                onRevoke={revoke}
+                isApproved
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="py-8 text-center">
+            <Text c="dimmed" size="sm">
+              {t('No copilots approved yet. Use the menu on any copilot to approve it for students.')}
+            </Text>
+          </div>
+        )}
+      </section>
 
       {/* Settings Section */}
       <section>

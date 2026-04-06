@@ -4,6 +4,7 @@ import { createFileRoute, Outlet, useCanGoBack, useNavigate, useRouter, useRoute
 import { useTranslation } from 'react-i18next'
 import { ScalableIcon } from '@/components/common/ScalableIcon'
 import Page from '@/components/layout/Page'
+import { useAuth } from '@/hooks/useAuth'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import ExpandableSearch from './-components/ExpandableSearch'
 
@@ -18,6 +19,8 @@ export function RouteComponent() {
   const routerState = useRouterState()
   const isSmallScreen = useIsSmallScreen()
   const canGoBack = useCanGoBack()
+  const { user } = useAuth()
+  const isTeacher = user?.role === 'teacher'
 
   // Get current sub-route
   const pathname = routerState.location.pathname
@@ -34,6 +37,7 @@ export function RouteComponent() {
   }
 
   const subPageTitle = getSubPageTitle()
+  const rootTitle = isTeacher ? t('My Copilots') : t('Copilots')
 
   const handleRootClick = () => {
     navigate({ to: '/copilots' })
@@ -70,7 +74,7 @@ export function RouteComponent() {
           c={subPageTitle ? 'chatbox-secondary' : 'chatbox-primary'}
           onClick={subPageTitle ? handleRootClick : undefined}
         >
-          {t('My Copilots')}
+          {rootTitle}
         </Text>
 
         {subPageTitle && (
@@ -87,7 +91,7 @@ export function RouteComponent() {
 
       {
         <Text size="lg" fw={600} className="md:hidden">
-          {subPageTitle || t('My Copilots')}
+          {subPageTitle || rootTitle}
         </Text>
       }
     </>
@@ -111,9 +115,11 @@ export function RouteComponent() {
         ) : undefined
       }
       right={
-        <Flex align="center" gap="xxs" className="controls">
-          <ExpandableSearch onSearch={handleSearch} />
-        </Flex>
+        isTeacher ? (
+          <Flex align="center" gap="xxs" className="controls">
+            <ExpandableSearch onSearch={handleSearch} />
+          </Flex>
+        ) : undefined
       }
     >
       <Outlet />

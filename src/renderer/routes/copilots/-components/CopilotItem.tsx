@@ -1,7 +1,16 @@
 import NiceModal from '@ebay/nice-modal-react'
 import { ActionIcon, Avatar, Flex, Highlight, Stack, Text } from '@mantine/core'
 import type { CopilotDetail } from '@shared/types'
-import { IconDots, IconEdit, IconMessageCircle2Filled, IconStar, IconStarFilled, IconTrash } from '@tabler/icons-react'
+import {
+  IconCheck,
+  IconDots,
+  IconEdit,
+  IconMessageCircle2Filled,
+  IconStar,
+  IconStarFilled,
+  IconTrash,
+  IconX,
+} from '@tabler/icons-react'
 import { useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -16,9 +25,12 @@ export interface CopilotItemProps {
   copilot: CopilotDetail
   type?: 'local' | 'remote'
   highlightTerm?: string
+  onApprove?: (copilot: CopilotDetail) => void
+  onRevoke?: (id: string) => void
+  isApproved?: boolean
 }
 
-export function CopilotItem({ copilot, type = 'local', highlightTerm = '' }: CopilotItemProps) {
+export function CopilotItem({ copilot, type = 'local', highlightTerm = '', onApprove, onRevoke, isApproved }: CopilotItemProps) {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const store = useMyCopilots()
@@ -145,6 +157,24 @@ export function CopilotItem({ copilot, type = 'local', highlightTerm = '' }: Cop
                           },
                         },
                       ]),
+                  ...(onApprove && !isApproved
+                    ? [
+                        {
+                          text: t('Approve for Students'),
+                          icon: IconCheck,
+                          onClick: () => onApprove(copilot),
+                        },
+                      ]
+                    : []),
+                  ...(onRevoke && isApproved
+                    ? [
+                        {
+                          text: t('Revoke Approval'),
+                          icon: IconX,
+                          onClick: () => onRevoke(copilot.id),
+                        },
+                      ]
+                    : []),
                   {
                     divider: true,
                   },
@@ -172,6 +202,34 @@ export function CopilotItem({ copilot, type = 'local', highlightTerm = '' }: Cop
                   )}
                 </ActionIcon>
               </ActionMenu>
+            )}
+            {type === 'remote' && onApprove && !isApproved && (
+              <ActionIcon
+                variant="transparent"
+                size={28}
+                color="chatbox-tertiary"
+                className="hover:bg-chatbox-background-gray-secondary rounded-full"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onApprove(copilot)
+                }}
+              >
+                <ScalableIcon icon={IconCheck} size={16} />
+              </ActionIcon>
+            )}
+            {type === 'remote' && onRevoke && isApproved && (
+              <ActionIcon
+                variant="transparent"
+                size={28}
+                color="green"
+                className="hover:bg-chatbox-background-gray-secondary rounded-full"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onRevoke(copilot.id)
+                }}
+              >
+                <ScalableIcon icon={IconCheck} size={16} />
+              </ActionIcon>
             )}
           </Flex>
         </Flex>
@@ -223,6 +281,9 @@ export function CopilotItem({ copilot, type = 'local', highlightTerm = '' }: Cop
         type={type}
         copilot={copilot}
         onUse={handleUse}
+        onApprove={onApprove}
+        onRevoke={onRevoke}
+        isApproved={isApproved}
       />
     </>
   )

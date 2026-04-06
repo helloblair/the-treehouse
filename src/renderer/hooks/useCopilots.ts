@@ -2,12 +2,13 @@ import type { CopilotDetail } from '@shared/types'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { useAtom } from 'jotai'
 import { atomWithStorage } from 'jotai/utils'
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import * as remote from '@/packages/remote'
 import storage, { StorageKey } from '@/storage'
 import { useLanguage } from '@/stores/settingsStore'
 
 const myCopilotsAtom = atomWithStorage<CopilotDetail[]>(StorageKey.MyCopilots, [], storage)
+const approvedCopilotsAtom = atomWithStorage<CopilotDetail[]>(StorageKey.ApprovedCopilots, [], storage)
 
 export function useMyCopilots() {
   const [copilots, setCopilots] = useAtom(myCopilotsAtom)
@@ -55,6 +56,35 @@ export function useMyCopilots() {
     addOrUpdate,
     remove,
   }
+}
+
+export function useApprovedCopilots() {
+  const [copilots, setCopilots] = useAtom(approvedCopilotsAtom)
+
+  const approve = useCallback(
+    (target: CopilotDetail) => {
+      setCopilots(async (prev) => {
+        const list = await prev
+        if (list.some((c) => c.id === target.id)) return list
+        return [...list, { ...target, updatedAt: Date.now() }]
+      })
+    },
+    [setCopilots]
+  )
+
+  const revoke = useCallback(
+    (id: string) => {
+      setCopilots(async (prev) => {
+        const list = await prev
+        return list.filter((c) => c.id !== id)
+      })
+    },
+    [setCopilots]
+  )
+
+  const isApproved = useCallback((id: string) => copilots.some((c) => c.id === id), [copilots])
+
+  return { copilots, approve, revoke, isApproved }
 }
 
 export function useRemoteCopilotTags() {

@@ -1,7 +1,7 @@
 import NiceModal from '@ebay/nice-modal-react'
 import { Avatar, Button, CloseButton, Flex, ScrollArea, Stack, Text } from '@mantine/core'
 import type { CopilotDetail, ImageSource } from '@shared/types'
-import { IconEdit, IconMessageCircle2Filled } from '@tabler/icons-react'
+import { IconCheck, IconEdit, IconMessageCircle2Filled, IconX } from '@tabler/icons-react'
 import { useQuery } from '@tanstack/react-query'
 import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -85,9 +85,12 @@ interface CopilotDetailModalProps {
   type: 'local' | 'remote'
   copilot: CopilotDetail | null
   onUse?: (copilot: CopilotDetail) => void
+  onApprove?: (copilot: CopilotDetail) => void
+  onRevoke?: (id: string) => void
+  isApproved?: boolean
 }
 
-export function CopilotDetailModal({ opened, onClose, type, copilot, onUse }: CopilotDetailModalProps) {
+export function CopilotDetailModal({ opened, onClose, type, copilot, onUse, onApprove, onRevoke, isApproved }: CopilotDetailModalProps) {
   const { t, i18n } = useTranslation()
   const { addOrUpdate } = useMyCopilots()
   const galleryOpenRef = useRef(false)
@@ -276,6 +279,32 @@ export function CopilotDetailModal({ opened, onClose, type, copilot, onUse }: Co
               }}
             >
               {t('Add to My Copilots')}
+            </Button>
+          )}
+          {onApprove && !isApproved && (
+            <Button
+              variant="outline"
+              color="green"
+              leftSection={<ScalableIcon icon={IconCheck} size={16} />}
+              onClick={() => {
+                onApprove(copilot)
+                onClose()
+              }}
+            >
+              {t('Approve for Students')}
+            </Button>
+          )}
+          {onRevoke && isApproved && (
+            <Button
+              variant="outline"
+              color="red"
+              leftSection={<ScalableIcon icon={IconX} size={16} />}
+              onClick={() => {
+                onRevoke(copilot.id)
+                onClose()
+              }}
+            >
+              {t('Revoke Approval')}
             </Button>
           )}
           <Button
