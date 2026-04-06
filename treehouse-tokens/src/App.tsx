@@ -7,7 +7,7 @@ import type { Assignment, Submission, Transaction, Wallet, Reward, PendingReview
 import './App.css'
 
 const PLUGIN_ID = 'treehouse-tokens'
-const PLATFORM_ORIGIN = import.meta.env.VITE_PLATFORM_ORIGIN || '*'
+const PLATFORM_ORIGIN = import.meta.env.VITE_PLATFORM_ORIGIN || 'http://localhost:1212'
 
 type ToolCallPayload = {
   type: 'TREEHOUSE_TOOL_CALL'
@@ -65,6 +65,7 @@ function App() {
   const roleRef = useRef(role)
   roleRef.current = role
   const initResolversRef = useRef<Array<() => void>>([])
+  const refreshGenRef = useRef(0)
 
   // ── Load rewards.json ─────────────────────────────────────
   useEffect(() => {
@@ -201,6 +202,7 @@ function App() {
   }, [])
 
   const refreshStudentData = useCallback(async (uid: string) => {
+    const gen = ++refreshGenRef.current
     const [w, txs, assigns, subs, lb] = await Promise.all([
       fetchWallet(uid),
       fetchTransactions(uid),
@@ -208,6 +210,8 @@ function App() {
       fetchSubmissions(uid),
       fetchLeaderboard(),
     ])
+    // Discard results if a newer refresh started while we were fetching
+    if (gen !== refreshGenRef.current) return { wallet: walletRef.current }
     setWallet(w)
     setTransactions(txs)
     setAssignments(assigns)
@@ -351,11 +355,8 @@ function App() {
           sendResult(callId, { error: `Unknown reward: ${rewardId}` }, true)
           break
         }
-        // Client-side guard (secondary safety — server RPC is authoritative)
-        if (walletRef.current.balance < reward.cost) {
-          sendResult(callId, { error: `Not enough tokens. Need ${reward.cost}, have ${walletRef.current.balance}.` }, true)
-          break
-        }
+        // Balance check is handled atomically by the server RPC (redeem_reward).
+        // No client-side guard — avoids false rejections from stale walletRef.
         try {
           const { data, error } = await supabase.rpc('redeem_reward', {
             p_user_id: uid,
@@ -510,8 +511,7 @@ function App() {
 
   const handleRedeem = useCallback(async (reward: Reward) => {
     const uid = userIdRef.current
-    // Client-side balance guard
-    if (!uid || walletRef.current.balance < reward.cost) return
+    if (!uid) return
     try {
       const { data, error } = await supabase.rpc('redeem_reward', {
         p_user_id: uid,
@@ -578,6 +578,45 @@ function App() {
   }, [refreshTeacherData])
 
   // ── Render ────────────────────────────────────────────────
+
+  // Standalone detection: redirect to main app if not in an iframe
+  if (window.parent === window) {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100vh',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        background: '#0f172a',
+        color: '#e2e8f0',
+        textAlign: 'center',
+        padding: 24,
+      }}>
+        <div>
+          <h2 style={{ fontSize: 20, marginBottom: 12, color: '#f8fafc' }}>This app runs inside The Treehouse</h2>
+          <p style={{ fontSize: 14, opacity: 0.7, marginBottom: 16 }}>
+            It's designed to be embedded in the chat experience, not visited directly.
+          </p>
+          <a
+            href="https://thetreehouse.vercel.app"
+            style={{
+              display: 'inline-block',
+              padding: '10px 24px',
+              background: '#3b82f6',
+              color: '#fff',
+              borderRadius: 8,
+              textDecoration: 'none',
+              fontSize: 14,
+              fontWeight: 500,
+            }}
+          >
+            Go to The Treehouse
+          </a>
+        </div>
+      </div>
+    )
+  }
 
   if (loading) {
     return (
