@@ -1,12 +1,40 @@
 import type { PluginManifest, ToolSchema } from '@shared/types/plugin'
 import { pluginStore } from './pluginStore'
 
+// Plugin URLs: use env vars in production, fall back to localhost dev servers
+const PLUGIN_URLS: Record<string, { iframe: string; mcp: string }> = {
+  'treehouse-chess': {
+    iframe: import.meta.env.VITE_PLUGIN_CHESS_URL || 'http://localhost:5174',
+    mcp: (import.meta.env.VITE_PLUGIN_CHESS_URL || 'http://localhost:5174') + '/mcp',
+  },
+  'treehouse-pixelart': {
+    iframe: import.meta.env.VITE_PLUGIN_PIXELART_URL || 'http://localhost:5175',
+    mcp: (import.meta.env.VITE_PLUGIN_PIXELART_URL || 'http://localhost:5175') + '/mcp',
+  },
+  'treehouse-pet': {
+    iframe: import.meta.env.VITE_PLUGIN_PET_URL || 'http://localhost:5176',
+    mcp: (import.meta.env.VITE_PLUGIN_PET_URL || 'http://localhost:5176') + '/mcp',
+  },
+  'treehouse-tokens': {
+    iframe: import.meta.env.VITE_PLUGIN_TOKENS_URL || 'http://localhost:5177',
+    mcp: (import.meta.env.VITE_PLUGIN_TOKENS_URL || 'http://localhost:5177') + '/mcp',
+  },
+  'treehouse-pioneer': {
+    iframe: import.meta.env.VITE_PLUGIN_PIONEER_URL || 'http://localhost:5178',
+    mcp: (import.meta.env.VITE_PLUGIN_PIONEER_URL || 'http://localhost:5178') + '/mcp',
+  },
+  'treehouse-body': {
+    iframe: import.meta.env.VITE_PLUGIN_BODY_URL || 'http://localhost:5179',
+    mcp: (import.meta.env.VITE_PLUGIN_BODY_URL || 'http://localhost:5179') + '/mcp',
+  },
+}
+
 const defaultPlugins: PluginManifest[] = [
   {
     id: 'treehouse-chess',
     name: 'PokéChess',
-    iframeUrl: 'http://localhost:5174',
-    mcpServerUrl: 'http://localhost:5174/mcp',
+    iframeUrl: PLUGIN_URLS['treehouse-chess'].iframe,
+    mcpServerUrl: PLUGIN_URLS['treehouse-chess'].mcp,
     tools: [
       {
         name: 'start_game',
@@ -15,7 +43,7 @@ const defaultPlugins: PluginManifest[] = [
       },
       {
         name: 'make_move',
-        description: 'Make YOUR move as Black. Only call this when it is Black\'s turn. The human moves White pieces by dragging on the visual board — never call this for White moves. Uses algebraic notation (e.g. "e5", "Nf6", "O-O"). IMPORTANT: You MUST call get_board_state before EVERY make_move to read the current position and move history. Never assume the board state from memory.',
+        description: 'Make YOUR move as Black. Only call this when it is Black\'s turn. Uses algebraic notation (e.g. "e5", "Nf6", "O-O"). CRITICAL RULES: (1) Call get_board_state BEFORE every make_move. (2) Do NOT write any narration or text about your move BEFORE calling this tool — the move may be illegal. (3) Only narrate AFTER this tool returns success. (4) If this returns an error, try a different move — do NOT narrate the failed move.',
         parameters: {
           type: 'object',
           properties: { move: { type: 'string', description: 'The move in algebraic notation' } },
@@ -34,14 +62,14 @@ const defaultPlugins: PluginManifest[] = [
         parameters: { type: 'object', properties: {}, additionalProperties: false },
       },
     ],
-    sandboxPolicy: '',
+    sandboxPolicy: 'allow-scripts allow-same-origin',
     enabled: true,
   },
   {
     id: 'treehouse-pixelart',
     name: 'Pixel Art',
-    iframeUrl: 'http://localhost:5175',
-    mcpServerUrl: 'http://localhost:5175/mcp',
+    iframeUrl: PLUGIN_URLS['treehouse-pixelart'].iframe,
+    mcpServerUrl: PLUGIN_URLS['treehouse-pixelart'].mcp,
     tools: [
       {
         name: 'start_canvas',
@@ -91,14 +119,14 @@ const defaultPlugins: PluginManifest[] = [
         },
       },
     ],
-    sandboxPolicy: '',
+    sandboxPolicy: 'allow-scripts allow-same-origin',
     enabled: true,
   },
   {
     id: 'treehouse-pet',
     name: 'PET-agogy',
-    iframeUrl: 'http://localhost:5176',
-    mcpServerUrl: 'http://localhost:5176/mcp',
+    iframeUrl: PLUGIN_URLS['treehouse-pet'].iframe,
+    mcpServerUrl: PLUGIN_URLS['treehouse-pet'].mcp,
     tools: [
       {
         name: 'get_pet_state',
@@ -110,6 +138,12 @@ const defaultPlugins: PluginManifest[] = [
         name: 'complete_task',
         description:
           'Award XP to the pet for the student completing a learning task (+20 XP, +10 happiness). Only call this when the pet plugin is currently active and the student tells their pet about finishing work. Do NOT call this alongside award_tokens — let the student decide which plugin to visit. The pet evolves at 100 XP (junior) and 300 XP (adult). Returns whether the pet evolved.',
+        parameters: { type: 'object', properties: {}, additionalProperties: false },
+      },
+      {
+        name: 'feed_pet',
+        description:
+          'Feed the pet to restore hunger (+25) and boost health (+10). Resets the fed timer. Use when the student asks to feed their pet or when the pet is hungry.',
         parameters: { type: 'object', properties: {}, additionalProperties: false },
       },
       {
@@ -137,14 +171,14 @@ const defaultPlugins: PluginManifest[] = [
         parameters: { type: 'object', properties: {}, additionalProperties: false },
       },
     ],
-    sandboxPolicy: '',
+    sandboxPolicy: 'allow-scripts allow-same-origin',
     enabled: true,
   },
   {
     id: 'treehouse-tokens',
     name: 'Token Rewards',
-    iframeUrl: 'http://localhost:5177',
-    mcpServerUrl: 'http://localhost:5177/mcp',
+    iframeUrl: PLUGIN_URLS['treehouse-tokens'].iframe,
+    mcpServerUrl: PLUGIN_URLS['treehouse-tokens'].mcp,
     tools: [
       // ── Student tools ──
       {
@@ -250,14 +284,14 @@ const defaultPlugins: PluginManifest[] = [
         },
       },
     ],
-    sandboxPolicy: '',
+    sandboxPolicy: 'allow-scripts allow-same-origin',
     enabled: true,
   },
   {
     id: 'treehouse-body',
     name: 'Anatomy Adventure',
-    iframeUrl: 'http://localhost:5179',
-    mcpServerUrl: 'http://localhost:5179/mcp',
+    iframeUrl: PLUGIN_URLS['treehouse-body'].iframe,
+    mcpServerUrl: PLUGIN_URLS['treehouse-body'].mcp,
     tools: [
       {
         name: 'get_progress',
@@ -266,26 +300,55 @@ const defaultPlugins: PluginManifest[] = [
         parameters: { type: 'object', properties: {}, additionalProperties: false },
       },
       {
-        name: 'start_quiz',
-        description:
-          'Prompt the student to start a quiz by clicking a body part in the diagram. Returns instructions for the student.',
-        parameters: { type: 'object', properties: {}, additionalProperties: false },
-      },
-      {
         name: 'get_systems',
         description:
           'List all available body systems in Anatomy Adventure with their names, part counts, and descriptions.',
         parameters: { type: 'object', properties: {}, additionalProperties: false },
       },
+      {
+        name: 'get_part_info',
+        description:
+          'Get educational info and quiz data for a specific body part. Returns the part\'s info text, quiz question, correct answer, and answer options. Call this when the student clicks a body part so you can teach them about it and then quiz them in chat. IMPORTANT: Do NOT reveal the correct answer when asking the question -- present the options and wait for the student to answer.',
+        parameters: {
+          type: 'object',
+          properties: {
+            system_id: { type: 'string', description: 'The body system ID (e.g. "muscular", "skeletal", "circulatory", "respiratory", "digestive", "nervous")' },
+            part_id: { type: 'string', description: 'The body part ID (e.g. "heart", "femur", "brain")' },
+          },
+          required: ['part_id'],
+          additionalProperties: false,
+        },
+      },
+      {
+        name: 'record_quiz_answer',
+        description:
+          'Record the result of a quiz answered in chat. Call this after the student answers a quiz question to update their XP, streak, and badges. The correct answer comes from get_part_info -- compare the student\'s chat response to decide if correct.',
+        parameters: {
+          type: 'object',
+          properties: {
+            system_id: { type: 'string', description: 'The body system ID' },
+            part_id: { type: 'string', description: 'The body part ID that was quizzed' },
+            correct: { type: 'boolean', description: 'Whether the student answered correctly' },
+          },
+          required: ['part_id', 'correct'],
+          additionalProperties: false,
+        },
+      },
+      {
+        name: 'start_quiz',
+        description:
+          'Prompt the student to click a body part in the diagram to start exploring and quizzing. Use when the student wants to study but hasn\'t clicked anything yet.',
+        parameters: { type: 'object', properties: {}, additionalProperties: false },
+      },
     ],
-    sandboxPolicy: '',
+    sandboxPolicy: 'allow-scripts allow-same-origin',
     enabled: true,
   },
   {
     id: 'treehouse-pioneer',
     name: 'Pioneer Path',
-    iframeUrl: 'http://localhost:5178',
-    mcpServerUrl: 'http://localhost:5178/mcp',
+    iframeUrl: PLUGIN_URLS['treehouse-pioneer'].iframe,
+    mcpServerUrl: PLUGIN_URLS['treehouse-pioneer'].mcp,
     tools: [
       {
         name: 'start_journey',
@@ -389,7 +452,7 @@ const defaultPlugins: PluginManifest[] = [
         },
       },
     ],
-    sandboxPolicy: '',
+    sandboxPolicy: 'allow-scripts allow-same-origin',
     enabled: true,
   },
 ]

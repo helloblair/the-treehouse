@@ -120,16 +120,20 @@ export function injectModelSystemPrompt(
   model: string,
   messages: Message[],
   additionalInfo: string,
-  role: 'system' | 'user' = 'system'
+  role: 'system' | 'user' = 'system',
+  safetyPreamble?: string
 ) {
   const metadataPrompt = `Current model: ${model}\nCurrent date: ${dayjs().format(
     'YYYY-MM-DD'
   )}\n Additional info for this conversation: ${additionalInfo}\n\n`
+  const fullPrompt = safetyPreamble
+    ? safetyPreamble + '\n\n' + metadataPrompt
+    : metadataPrompt
   let hasInjected = false
   return messages.map((m) => {
     if (m.role === role && !hasInjected) {
       m = cloneMessage(m) // 复制，防止原始数据在其他地方被直接渲染使用
-      m.contentParts = [{ type: 'text', text: metadataPrompt + getMessageText(m) }]
+      m.contentParts = [{ type: 'text', text: fullPrompt + getMessageText(m) }]
       hasInjected = true
     }
     return m

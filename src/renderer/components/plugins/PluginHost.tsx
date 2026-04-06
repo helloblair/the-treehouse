@@ -21,7 +21,7 @@ export default function PluginHost() {
 }
 
 // Plugins that manage their own Supabase persistence (pet, tokens) don't need parent-side persistence.
-const SELF_PERSISTED_PLUGINS = new Set(['treehouse-pet', 'treehouse-tokens'])
+const SELF_PERSISTED_PLUGINS = new Set(['treehouse-pet', 'treehouse-tokens', 'treehouse-pioneer'])
 
 function PluginIframe({ manifest, userId, role }: { manifest: (typeof pluginStore extends { getState: () => infer S } ? S : never)['manifests'][number]; userId?: string; role?: string }) {
   const iframeRef = useRef<HTMLIFrameElement>(null)
@@ -169,6 +169,7 @@ function PluginIframe({ manifest, userId, role }: { manifest: (typeof pluginStor
     const initMap: Record<string, string> = {
       'treehouse-pet': 'init_pet',
       'treehouse-tokens': 'init_tokens',
+      'treehouse-pioneer': 'init_pioneer',
     }
     const toolName = initMap[manifest.id]
     if (!toolName) return

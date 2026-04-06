@@ -1,4 +1,5 @@
 import { getModel } from '@shared/models'
+import { POKECHESS_LORE } from '@shared/pokechess-lore'
 import { ChatboxAIAPIError, OCRError } from '@shared/models/errors'
 import { sequenceMessages } from '@shared/utils/message'
 import { getModelSettings } from '@shared/utils/model_settings'
@@ -28,6 +29,12 @@ import { getAuthToken, validateToken } from '@/hooks/useAuth'
 import { registerToolCall, waitForPluginReady } from '@/stores/pluginBridge'
 import { pluginStore } from '@/stores/pluginStore'
 import { mcpController } from '../mcp/controller'
+import {
+  CHILD_SAFETY_SYSTEM_PROMPT,
+  buildBlockedResponse,
+  getLastUserMessageText,
+  screenUserInput,
+} from './child-safety'
 import { convertToModelMessages, injectModelSystemPrompt } from './message-utils'
 import { imageOCR } from './preprocess'
 import {
@@ -148,6 +155,15 @@ export async function streamText(
     signal.addEventListener('abort', cancel, { once: true })
   }
 
+  // ── Child safety: screen user input before any model work ──
+  const lastUserText = getLastUserMessageText(params.messages)
+  const screening = screenUserInput(lastUserText)
+  if (screening.blocked) {
+    const blockedResult = buildBlockedResponse(screening.redirectMessage!)
+    params.onResultChangeWithCancel({ ...blockedResult, cancel: () => {} })
+    return { result: blockedResult, coreMessages: [] }
+  }
+
   let result: StreamTextResult = {
     contentParts: [],
   }
@@ -204,18 +220,9 @@ export async function streamText(
     const isEnabled = (id: string) =>
       pluginState.manifests.find((m) => m.id === id && m.enabled && !pluginState.degraded[id])
 
-    // ── PokéChess: Pokémon rival trainer ──
+    // ── PokéChess: Pokémon battle narrator (full lore auto-injected) ──
     if (isEnabled('treehouse-chess')) {
-      toolSetInstructions +=
-        '\nWhen PokéChess is active, you are a spirited Pokémon rival trainer. ' +
-        'Treat each chess game like a Pokémon battle — pieces are your team, captures are "super effective" hits, ' +
-        'and checkmate is winning the league. Be competitive but sportsmanlike: trash-talk playfully, ' +
-        'compliment clever moves ("That fork was legendary-tier!"), and react dramatically to surprises. ' +
-        'Use Pokémon battle lingo naturally: "critical hit," "it\'s not very effective," "a wild Knight appears!" ' +
-        'Reference specific Pokémon when it fits (a Bishop\'s diagonal is "like Scyther\'s Slash," ' +
-        'a castled King is "hiding behind a Snorlax wall"). ' +
-        'When you lose a piece, act wounded but determined. When you capture, celebrate like you just caught a rare one. ' +
-        'Keep the energy fun and competitive — you\'re their rival, not their enemy.\n'
+      toolSetInstructions += `\nWhen PokéChess is active, you are the commander of The Shadow Reign — narrating this chess game like an epic Pokémon battle. You play Black. The student plays White. You're like an excited, imaginative kid who treats every move like a pivotal moment in a legendary Pokémon showdown. Competitive, playful, never mean.\n\n${POKECHESS_LORE}\n`
     }
 
     // ── Pixel Art: enthusiastic art mentor ──
@@ -303,7 +310,8 @@ export async function streamText(
     params.messages,
     // 在系统提示中添加知识库名称，方便模型理解
     toolSetInstructions,
-    model.isSupportSystemMessage() ? 'system' : 'user'
+    model.isSupportSystemMessage() ? 'system' : 'user',
+    CHILD_SAFETY_SYSTEM_PROMPT
   )
 
   if (!model.isSupportSystemMessage()) {
