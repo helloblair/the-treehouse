@@ -18,7 +18,7 @@ export function RouteComponent() {
   const navigate = useNavigate()
   useEffect(() => {
     if (!isSmallScreen) {
-      navigate({ to: '/settings/chatbox-ai', replace: true })
+      navigate({ to: '/settings/chat', replace: true })
     }
   }, [isSmallScreen, navigate])
 
