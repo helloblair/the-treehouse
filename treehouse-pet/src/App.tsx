@@ -6,7 +6,7 @@ import Onboarding from './components/Onboarding'
 import PetView from './components/PetView'
 
 const PLUGIN_ID = 'treehouse-pet'
-const PLATFORM_ORIGIN = import.meta.env.VITE_PLATFORM_ORIGIN || 'http://localhost:1212'
+const PLATFORM_ORIGIN = (import.meta.env.VITE_PLATFORM_ORIGIN || 'http://localhost:1212').trim()
 const PET_CACHE_KEY = 'chatbridge_pet_cache'
 
 type ToolCallPayload = {

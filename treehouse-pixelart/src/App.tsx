@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import './App.css'
 
 const PLUGIN_ID = 'treehouse-pixelart'
-const PLATFORM_ORIGIN = import.meta.env.VITE_PLATFORM_ORIGIN || 'http://localhost:1212'
+const PLATFORM_ORIGIN = (import.meta.env.VITE_PLATFORM_ORIGIN || 'http://localhost:1212').trim()
 const MAX_HISTORY = 50
 
 const DEFAULT_PALETTE = [

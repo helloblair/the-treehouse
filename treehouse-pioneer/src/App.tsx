@@ -9,7 +9,7 @@ import Hunt from './components/Hunt'
 import RiverCrossing from './components/RiverCrossing'
 
 const PLUGIN_ID = 'treehouse-pioneer'
-const PLATFORM_ORIGIN = import.meta.env.VITE_PLATFORM_ORIGIN || 'http://localhost:1212'
+const PLATFORM_ORIGIN = (import.meta.env.VITE_PLATFORM_ORIGIN || 'http://localhost:1212').trim()
 const GAME_CACHE_KEY = 'chatbridge_pioneer_cache'
 
 interface ToolCallPayload {

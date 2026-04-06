@@ -2,7 +2,7 @@ import type { TreehouseToolCall } from '../types'
 import type { PlayerStats } from '../types'
 
 const PLUGIN_ID = 'treehouse-body'
-const PLATFORM_ORIGIN = import.meta.env.VITE_PLATFORM_ORIGIN || 'http://localhost:1212'
+const PLATFORM_ORIGIN = (import.meta.env.VITE_PLATFORM_ORIGIN || 'http://localhost:1212').trim()
 
 type ToolHandler = (
   toolName: string,

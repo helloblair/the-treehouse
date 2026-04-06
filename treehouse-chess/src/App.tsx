@@ -14,7 +14,7 @@ import { PROMOTION_POKEMON } from './pokemonLore'
 import RetroDialogue from './RetroDialogue'
 
 const PLUGIN_ID = 'treehouse-chess'
-const PLATFORM_ORIGIN = import.meta.env.VITE_PLATFORM_ORIGIN || 'http://localhost:1212'
+const PLATFORM_ORIGIN = (import.meta.env.VITE_PLATFORM_ORIGIN || 'http://localhost:1212').trim()
 
 type ToolCallPayload = {
   type: 'TREEHOUSE_TOOL_CALL'
