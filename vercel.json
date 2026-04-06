@@ -3,6 +3,9 @@
   "outputDirectory": "release/app/dist/renderer",
   "installCommand": "pnpm install",
   "framework": null,
+  "functions": {
+    "api/claude.ts": { "runtime": "@vercel/edge" }
+  },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
