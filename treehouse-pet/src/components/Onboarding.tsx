@@ -41,12 +41,23 @@ export default function Onboarding({ userId, onComplete }: OnboardingProps) {
     setSaving(true)
     setError('')
 
+    const now = new Date().toISOString()
     const { data, error: dbError } = await supabase
       .from('pets')
       .insert({
         user_id: userId,
         name: petName.trim(),
         pet_type: selectedPet,
+        growth_stage: 'puppy',
+        hunger: 100,
+        happiness: 100,
+        health: 100,
+        xp: 0,
+        last_fed_at: now,
+        last_played_at: now,
+        last_bathed_at: now,
+        last_active_at: now,
+        days_active: 0,
       })
       .select()
       .single()

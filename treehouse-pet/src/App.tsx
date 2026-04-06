@@ -6,7 +6,7 @@ import Onboarding from './components/Onboarding'
 import PetView from './components/PetView'
 
 const PLUGIN_ID = 'treehouse-pet'
-const PLATFORM_ORIGIN = import.meta.env.VITE_PLATFORM_ORIGIN || '*'
+const PLATFORM_ORIGIN = import.meta.env.VITE_PLATFORM_ORIGIN || 'http://localhost:1212'
 const PET_CACHE_KEY = 'chatbridge_pet_cache'
 
 type ToolCallPayload = {
@@ -55,16 +55,16 @@ function getFullState(pet: Pet) {
   }
 }
 
-// localStorage cache helpers
-function cachePetToLocal(pet: Pet) {
+// localStorage cache helpers — keyed by userId to prevent cross-user contamination
+function cachePetToLocal(pet: Pet, uid: string) {
   try {
-    localStorage.setItem(PET_CACHE_KEY, JSON.stringify(pet))
+    localStorage.setItem(`${PET_CACHE_KEY}_${uid}`, JSON.stringify(pet))
   } catch { /* quota exceeded — ignore */ }
 }
 
-function loadPetFromLocal(): Pet | null {
+function loadPetFromLocal(uid: string): Pet | null {
   try {
-    const raw = localStorage.getItem(PET_CACHE_KEY)
+    const raw = localStorage.getItem(`${PET_CACHE_KEY}_${uid}`)
     return raw ? (JSON.parse(raw) as Pet) : null
   } catch {
     return null
@@ -88,13 +88,13 @@ async function fetchPetFromDb(uid: string): Promise<Pet | null> {
       .maybeSingle()
     if (error) throw error
     if (data) {
-      cachePetToLocal(data as Pet)
+      cachePetToLocal(data as Pet, uid)
       return data as Pet
     }
     return null
   } catch (err) {
     console.warn('[treehouse-pet] Supabase fetch failed, using localStorage cache:', err)
-    return loadPetFromLocal()
+    return loadPetFromLocal(uid)
   }
 }
 
@@ -132,7 +132,7 @@ function App() {
         .single()
       if (error) throw error
       const updated = data as Pet
-      cachePetToLocal(updated)
+      if (userIdRef.current) cachePetToLocal(updated, userIdRef.current)
       setSaving(false)
       return updated
     } catch (err) {
@@ -144,8 +144,10 @@ function App() {
       }
       // Optimistically update local state and cache
       const optimistic = { ...petRef.current, ...updates } as Pet
-      cachePetToLocal(optimistic)
+      if (userIdRef.current) cachePetToLocal(optimistic, userIdRef.current)
       setSaving(true) // keep indicator visible
+      // Schedule a reconciliation to resync with DB after the failure
+      setTimeout(() => void reconcileWithDb(), 3000)
       return optimistic
     }
   }
@@ -168,14 +170,32 @@ function App() {
     }
     if (pendingWritesRef.current.length === 0) {
       setSaving(false)
+      // Re-fetch authoritative state from Supabase after flushing queued writes
+      void reconcileWithDb()
     }
+  }
+
+  // Re-sync local state with Supabase to correct any optimistic drift
+  async function reconcileWithDb() {
+    const uid = userIdRef.current
+    if (!uid) return
+    try {
+      const fetched = await fetchPetFromDb(uid)
+      if (fetched) {
+        setPet(fetched)
+        petRef.current = fetched
+      }
+    } catch { /* already offline — ignore */ }
   }
 
   // Wait for init_pet to complete (up to 5 seconds)
   function waitForInit(): Promise<void> {
     if (userIdRef.current) return Promise.resolve()
-    return new Promise((resolve) => {
-      const timeout = setTimeout(() => resolve(), 5000)
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(
+        () => reject(new Error('Pet plugin not initialized — userId not received within 5 seconds')),
+        5000,
+      )
       initResolversRef.current.push(() => {
         clearTimeout(timeout)
         resolve()
@@ -186,7 +206,12 @@ function App() {
   // Resolve current pet — waits for init, then checks ref, then Supabase fallback
   async function resolvePet(): Promise<Pet | null> {
     if (petRef.current) return petRef.current
-    await waitForInit()
+    try {
+      await waitForInit()
+    } catch (err) {
+      console.warn('[treehouse-pet]', err instanceof Error ? err.message : err)
+      return null
+    }
     if (petRef.current) return petRef.current
     if (!userIdRef.current) return null
     const fetched = await fetchPetFromDb(userIdRef.current)
@@ -261,6 +286,26 @@ function App() {
             const state = getFullState(updated)
             const evolved = newStage !== currentPet.growth_stage
             sendResult(callId, { ...state, xp_gained: xpGain, evolved, evolved_to: evolved ? newStage : null })
+          } else {
+            sendResult(callId, { error: 'Failed to update pet' }, true)
+          }
+          break
+        }
+
+        case 'feed_pet': {
+          const newHunger = Math.min(100, currentPet.hunger + 25)
+          const newHealth = Math.min(100, currentPet.health + 10)
+
+          const updated = await writePetToDb(currentPet.id, {
+            hunger: newHunger,
+            health: newHealth,
+            last_fed_at: new Date().toISOString(),
+          })
+
+          if (updated) {
+            setPet(updated)
+            petRef.current = updated
+            sendResult(callId, getFullState(updated))
           } else {
             sendResult(callId, { error: 'Failed to update pet' }, true)
           }
@@ -379,6 +424,45 @@ function App() {
     const timer = setTimeout(() => setEcstaticUntil(0), ecstaticUntil - Date.now())
     return () => clearTimeout(timer)
   }, [ecstaticUntil])
+
+  // Standalone detection: redirect to main app if not in an iframe
+  if (window.parent === window) {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100vh',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        background: '#0f172a',
+        color: '#e2e8f0',
+        textAlign: 'center',
+        padding: 24,
+      }}>
+        <div>
+          <h2 style={{ fontSize: 20, marginBottom: 12, color: '#f8fafc' }}>This app runs inside The Treehouse</h2>
+          <p style={{ fontSize: 14, opacity: 0.7, marginBottom: 16 }}>
+            It's designed to be embedded in the chat experience, not visited directly.
+          </p>
+          <a
+            href="https://thetreehouse.vercel.app"
+            style={{
+              display: 'inline-block',
+              padding: '10px 24px',
+              background: '#3b82f6',
+              color: '#fff',
+              borderRadius: 8,
+              textDecoration: 'none',
+              fontSize: 14,
+              fontWeight: 500,
+            }}
+          >
+            Go to The Treehouse
+          </a>
+        </div>
+      </div>
+    )
+  }
 
   // Before userId is set, show a loading state
   if (!userId) {
