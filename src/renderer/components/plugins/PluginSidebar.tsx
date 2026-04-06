@@ -84,13 +84,11 @@ export default function PluginSidebar() {
                 <div
                   style={{
                     width: '100%',
-                    height: 28,
+                    minHeight: 28,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    paddingBottom: 6,
-                    paddingLeft: 2,
-                    paddingRight: 2,
+                    padding: '4px 4px 6px',
                   }}
                 >
                   <Text

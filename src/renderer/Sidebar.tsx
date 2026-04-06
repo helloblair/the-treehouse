@@ -220,13 +220,13 @@ export default function Sidebar() {
           />
         )}
 
+        <PluginSidebar />
+
         {sidebarMode === 'task' && featureFlags.taskMode ? (
           <TaskSessionList />
         ) : (
           <SessionList sessionListViewportRef={sessionListViewportRef} />
         )}
-
-        <PluginSidebar />
 
         <Stack gap={0} px="xs" pb="xs">
           <Divider />
