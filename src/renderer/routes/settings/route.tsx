@@ -8,6 +8,7 @@ import {
   IconChevronRight,
   IconCircleDottedLetterM,
   IconFileText,
+  IconHeadset,
   IconInfoCircle,
   IconKeyboard,
   IconMessages,
@@ -20,25 +21,68 @@ import { Toaster } from 'sonner'
 import Divider from '@/components/common/Divider'
 import Page from '@/components/layout/Page'
 import { ScalableIcon } from '@/components/common/ScalableIcon'
+import { useAuth } from '@/hooks/useAuth'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import platform from '@/platform'
 import { featureFlags } from '@/utils/feature-flags'
 
-const ITEMS = [
+// 'ui' = visible to all roles, 'ai' = support/dev only, 'teacher' = teacher + support
+type SettingsVisibility = 'ui' | 'ai' | 'teacher'
+
+interface SettingsItem {
+  key: string
+  label: string
+  icon: React.ReactNode
+  visibility: SettingsVisibility
+}
+
+const ITEMS: SettingsItem[] = [
+  {
+    key: 'chat',
+    label: 'Chat Settings',
+    icon: <IconMessages className="w-full h-full" />,
+    visibility: 'ui',
+  },
+  ...(platform.type === 'mobile'
+    ? []
+    : [
+        {
+          key: 'hotkeys',
+          label: 'Keyboard Shortcuts',
+          icon: <IconKeyboard className="w-full h-full" />,
+          visibility: 'ui' as const,
+        },
+      ]),
+  {
+    key: 'general',
+    label: 'General Settings',
+    icon: <IconAdjustmentsHorizontal className="w-full h-full" />,
+    visibility: 'ui',
+  },
+  {
+    key: 'support',
+    label: 'Support',
+    icon: <IconHeadset className="w-full h-full" />,
+    visibility: 'teacher',
+  },
+  // AI/technical settings — support/dev team only
   {
     key: 'provider',
     label: 'Model Provider',
     icon: <IconCategory className="w-full h-full" />,
+    visibility: 'ai',
   },
   {
     key: 'default-models',
     label: 'Default Models',
     icon: <IconBox className="w-full h-full" />,
+    visibility: 'ai',
   },
   {
     key: 'web-search',
     label: 'Web Search',
     icon: <IconWorldWww className="w-full h-full" />,
+    visibility: 'ai',
   },
   ...(featureFlags.mcp
     ? [
@@ -46,6 +90,7 @@ const ITEMS = [
           key: 'mcp',
           label: 'MCP',
           icon: <IconCircleDottedLetterM className="w-full h-full" />,
+          visibility: 'ai' as const,
         },
       ]
     : []),
@@ -55,6 +100,7 @@ const ITEMS = [
           key: 'knowledge-base',
           label: 'Knowledge Base',
           icon: <IconBook className="w-full h-full" />,
+          visibility: 'ai' as const,
         },
       ]
     : []),
@@ -62,27 +108,18 @@ const ITEMS = [
     key: 'document-parser',
     label: 'Document Parser',
     icon: <IconFileText className="w-full h-full" />,
-  },
-  {
-    key: 'chat',
-    label: 'Chat Settings',
-    icon: <IconMessages className="w-full h-full" />,
-  },
-  ...(platform.type === 'mobile'
-    ? []
-    : [
-        {
-          key: 'hotkeys',
-          label: 'Keyboard Shortcuts',
-          icon: <IconKeyboard className="w-full h-full" />,
-        },
-      ]),
-  {
-    key: 'general',
-    label: 'General Settings',
-    icon: <IconAdjustmentsHorizontal className="w-full h-full" />,
+    visibility: 'ai',
   },
 ]
+
+function getVisibleItems(role: 'student' | 'teacher' | 'support') {
+  return ITEMS.filter((item) => {
+    if (item.visibility === 'ui') return true
+    if (item.visibility === 'teacher') return role === 'teacher' || role === 'support'
+    if (item.visibility === 'ai') return role === 'support'
+    return false
+  })
+}
 
 export const Route = createFileRoute('/settings')({
   component: RouteComponent,
@@ -123,7 +160,8 @@ export function SettingsRoot() {
   const routerState = useRouterState()
   const key = routerState.location.pathname.split('/')[2]
   const isSmallScreen = useIsSmallScreen()
-  const visibleItems = ITEMS
+  const { user } = useAuth()
+  const visibleItems = getVisibleItems(user?.role ?? 'student')
 
   return (
     <Flex flex={1} h="100%" miw={isSmallScreen ? undefined : 800}>

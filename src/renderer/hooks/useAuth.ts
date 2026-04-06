@@ -7,7 +7,7 @@ const AUTH_TOKEN_KEY = 'treehouse_auth_token'
 interface AuthUser {
   email: string
   userId: string
-  role: 'teacher' | 'student'
+  role: 'teacher' | 'student' | 'support'
 }
 
 interface AuthState {
@@ -63,7 +63,8 @@ export async function validateToken(token: string): Promise<AuthUser | null> {
 
     // Role from user_metadata (set during signUp)
     const metaRole = payload.user_metadata?.role
-    let role: 'teacher' | 'student' = metaRole === 'teacher' ? 'teacher' : 'student'
+    let role: 'teacher' | 'student' | 'support' =
+      metaRole === 'support' ? 'support' : metaRole === 'teacher' ? 'teacher' : 'student'
 
     // If no role in JWT metadata, try user_profiles table
     if (!metaRole && supabase) {
@@ -72,7 +73,8 @@ export async function validateToken(token: string): Promise<AuthUser | null> {
         .select('role')
         .eq('user_id', userId)
         .single()
-      if (profile?.role === 'teacher') role = 'teacher'
+      if (profile?.role === 'support') role = 'support'
+      else if (profile?.role === 'teacher') role = 'teacher'
     }
 
     return { email, userId, role }

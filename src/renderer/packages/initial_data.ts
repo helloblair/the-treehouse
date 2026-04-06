@@ -755,5 +755,5 @@ mindmap
   threads: [],
 }
 
-defaultSessionsForCN.unshift(mermaidSessionCN)
-defaultSessionsForEN.unshift(mermaidSessionEN)
+// Mermaid/ChartWhiz sessions kept as exports for migration.ts backward compatibility
+// but no longer added to defaults for new users
