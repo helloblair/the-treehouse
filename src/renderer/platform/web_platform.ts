@@ -106,6 +106,7 @@ export default class WebPlatform extends IndexedDBStorage implements Platform {
   }
 
   public async initTracking() {
+    if (typeof window.gtag !== 'function') return
     const GAID = 'G-B365F44W6E'
     try {
       const conf = await this.getConfig()
@@ -119,13 +120,16 @@ export default class WebPlatform extends IndexedDBStorage implements Platform {
         app_platform: await this.getPlatform(),
       })
     } catch (e) {
-      window.gtag('config', GAID, {
-        app_name: 'chatbox',
-      })
+      if (typeof window.gtag === 'function') {
+        window.gtag('config', GAID, {
+          app_name: 'chatbox',
+        })
+      }
       throw e
     }
   }
   public trackingEvent(name: string, params: { [key: string]: string }) {
+    if (typeof window.gtag !== 'function') return
     window.gtag('event', name, params)
   }
 
