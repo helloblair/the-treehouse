@@ -15,6 +15,8 @@ import { useNavigate } from '@tanstack/react-router'
 import clsx from 'clsx'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import TreehouseIcon from './components/TreehouseIcon'
+import { SidebarTexture } from './components/TreehouseTexture'
 import Divider from './components/common/Divider'
 import { ScalableIcon } from './components/common/ScalableIcon'
 import ThemeSwitchButton from './components/dev/ThemeSwitchButton'
@@ -144,7 +146,7 @@ export default function Sidebar() {
       }}
       SlideProps={language === 'ar' ? { direction: 'left' } : undefined}
       PaperProps={
-        language === 'ar' ? { sx: { direction: 'rtl', overflowY: 'initial' } } : { sx: { overflowY: 'initial' } }
+        language === 'ar' ? { sx: { direction: 'rtl', overflowY: 'auto' } } : { sx: { overflowY: 'auto' } }
       }
       disableSwipeToOpen={CHATBOX_BUILD_PLATFORM !== 'ios'} // 只在iOS设备上启用SwipeToOpen
     >
@@ -153,20 +155,21 @@ export default function Sidebar() {
         gap={0}
         pt="var(--mobile-safe-area-inset-top, 0px)"
         pb="var(--mobile-safe-area-inset-bottom, 0px)"
-        className="relative"
+        className="relative treehouse-sidebar-texture"
+        style={{ background: 'var(--treehouse-sidebar-bg)' }}
       >
+        <SidebarTexture />
         {needRoomForMacWindowControls && <Box className="title-bar flex-[0_0_44px]" />}
         <Flex align="center" justify="space-between" px="md" py="sm">
           <Flex align="center" gap="sm">
             <Flex
               align="center"
               gap="sm"
-              onClick={() => platform.openLink('https://chatboxai.app/')}
               style={{ cursor: 'pointer' }}
             >
-              <Image src={icon} w={20} h={20} />
-              <Text span c="chatbox-secondary" size="xl" lh={1.2} fw="700">
-                Chatbox
+              <TreehouseIcon size={28} />
+              <Text span size="xl" lh={1.2} fw="700" style={{ color: 'var(--treehouse-sidebar-text)' }}>
+                The Treehouse
               </Text>
               {/\d/.test(versionHook.version) && (
                 <Text span c="chatbox-tertiary" size="sm">

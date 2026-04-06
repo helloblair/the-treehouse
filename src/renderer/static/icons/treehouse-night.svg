@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <!-- Night sky hints -->
+  <circle cx="20" cy="15" r="1" fill="#E8D5B7" opacity="0.5"/>
+  <circle cx="95" cy="25" r="0.8" fill="#E8D5B7" opacity="0.4"/>
+  <circle cx="15" cy="40" r="0.6" fill="#E8D5B7" opacity="0.3"/>
+  <circle cx="105" cy="10" r="1" fill="#E8D5B7" opacity="0.4"/>
+  <circle cx="30" cy="8" r="0.7" fill="#E8D5B7" opacity="0.3"/>
+  <!-- Moon -->
+  <circle cx="98" cy="12" r="6" fill="#E8D5B7" opacity="0.3"/>
+  <circle cx="100" cy="11" r="5" fill="#0D1B2A" opacity="0.6"/>
+  <!-- Tree trunk -->
+  <path d="M52 95 L55 55 Q58 40 60 35 Q62 40 65 55 L68 95" fill="#3E2723" stroke="#2C1810" stroke-width="1"/>
+  <path d="M48 95 L52 70 Q54 60 55 55" fill="#4E342E" stroke="none" opacity="0.5"/>
+  <!-- Roots -->
+  <path d="M48 95 Q40 100 35 102" stroke="#3E2723" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <path d="M72 95 Q80 100 85 102" stroke="#3E2723" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <!-- Tree canopy layers (dark) -->
+  <ellipse cx="60" cy="32" rx="35" ry="25" fill="#1B3A4B"/>
+  <ellipse cx="45" cy="35" rx="22" ry="18" fill="#1B4332"/>
+  <ellipse cx="75" cy="35" rx="22" ry="18" fill="#1B4332"/>
+  <ellipse cx="60" cy="25" rx="28" ry="18" fill="#274C5B"/>
+  <ellipse cx="50" cy="28" rx="15" ry="12" fill="#2D6A4F"/>
+  <ellipse cx="70" cy="28" rx="15" ry="12" fill="#2D6A4F"/>
+  <ellipse cx="60" cy="20" rx="18" ry="12" fill="#1B3A4B"/>
+  <!-- Treehouse body -->
+  <rect x="45" y="48" width="30" height="22" rx="2" fill="#5D4037"/>
+  <rect x="44" y="46" width="32" height="4" rx="1" fill="#4E342E"/>
+  <!-- Roof -->
+  <polygon points="40,46 60,33 80,46" fill="#3E2723"/>
+  <polygon points="42,46 60,35 78,46" fill="#4E342E"/>
+  <!-- Windows with warm golden glow -->
+  <rect x="50" y="53" width="7" height="7" rx="1" fill="#FFB74D"/>
+  <rect x="50" y="53" width="7" height="7" rx="1" fill="#FFE082" opacity="0.5"/>
+  <rect x="63" y="53" width="7" height="7" rx="1" fill="#FFB74D"/>
+  <rect x="63" y="53" width="7" height="7" rx="1" fill="#FFE082" opacity="0.5"/>
+  <!-- Window glow effect -->
+  <ellipse cx="53.5" cy="56.5" rx="8" ry="8" fill="#FFB74D" opacity="0.08"/>
+  <ellipse cx="66.5" cy="56.5" rx="8" ry="8" fill="#FFB74D" opacity="0.08"/>
+  <!-- Door -->
+  <rect x="56" y="60" width="8" height="10" rx="4" fill="#3E2723"/>
+  <circle cx="62" cy="66" r="0.8" fill="#FFB74D"/>
+  <!-- Ladder -->
+  <line x1="72" y1="70" x2="78" y2="95" stroke="#5D4037" stroke-width="2"/>
+  <line x1="75" y1="70" x2="81" y2="95" stroke="#5D4037" stroke-width="2"/>
+  <line x1="72.8" y1="74" x2="75.8" y2="74" stroke="#6D4C41" stroke-width="1.5"/>
+  <line x1="73.6" y1="78" x2="76.6" y2="78" stroke="#6D4C41" stroke-width="1.5"/>
+  <line x1="74.4" y1="82" x2="77.4" y2="82" stroke="#6D4C41" stroke-width="1.5"/>
+  <line x1="75.2" y1="86" x2="78.2" y2="86" stroke="#6D4C41" stroke-width="1.5"/>
+  <line x1="76" y1="90" x2="79" y2="90" stroke="#6D4C41" stroke-width="1.5"/>
+  <!-- Fireflies -->
+  <circle cx="25" cy="60" r="2" fill="#FFE082" opacity="0.6"/>
+  <circle cx="25" cy="60" r="4" fill="#FFE082" opacity="0.15"/>
+  <circle cx="90" cy="50" r="1.5" fill="#FFE082" opacity="0.5"/>
+  <circle cx="90" cy="50" r="3" fill="#FFE082" opacity="0.1"/>
+  <circle cx="35" cy="80" r="1.5" fill="#FFE082" opacity="0.4"/>
+  <circle cx="35" cy="80" r="3" fill="#FFE082" opacity="0.1"/>
+  <circle cx="85" cy="75" r="1" fill="#FFE082" opacity="0.5"/>
+  <circle cx="85" cy="75" r="2.5" fill="#FFE082" opacity="0.1"/>
+  <circle cx="18" cy="90" r="1.2" fill="#FFE082" opacity="0.3"/>
+</svg>

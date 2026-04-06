@@ -2,12 +2,15 @@ import NiceModal, { useModal } from '@ebay/nice-modal-react'
 import { Button, Image, List, Paper, Stack, Text, Title } from '@mantine/core'
 import { useTranslation } from 'react-i18next'
 import { AdaptiveModal } from '@/components/common/AdaptiveModal'
+import { useAuth } from '@/hooks/useAuth'
 import icon from '../static/icon.png'
 import { navigateToSettings } from './Settings'
 
 const Welcome = NiceModal.create(() => {
   const { t } = useTranslation()
   const modal = useModal()
+  const { user } = useAuth()
+  const isTeacher = user?.role === 'teacher'
 
   const onClose = () => {
     modal.resolve()
@@ -51,7 +54,7 @@ const Welcome = NiceModal.create(() => {
               radius="md"
               classNames={{ root: '!outline-none', label: 'flex flex-col items-center justify-center' }}
               onClick={() => {
-                navigateToSettings('/provider/chatbox-ai')
+                navigateToSettings(isTeacher ? '/provider/chatbox-ai' : 'provider')
                 modal.resolve('setup')
                 modal.hide()
               }}

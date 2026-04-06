@@ -3,14 +3,14 @@
 @tailwind utilities;
 
 :root {
-  /* radius */
+  /* radius — rounder/playful for a kids' theme */
   --chatbox-radius-none: 0rem;
-  --chatbox-radius-xs: 0.125rem;
-  --chatbox-radius-sm: 0.25rem;
-  --chatbox-radius-md: 0.5rem;
-  --chatbox-radius-lg: 1rem;
-  --chatbox-radius-xl: 1.5rem;
-  --chatbox-radius-xxl: 2rem;
+  --chatbox-radius-xs: 0.25rem;
+  --chatbox-radius-sm: 0.5rem;
+  --chatbox-radius-md: 0.75rem;
+  --chatbox-radius-lg: 1.25rem;
+  --chatbox-radius-xl: 1.75rem;
+  --chatbox-radius-xxl: 2.5rem;
 
   /* spacing */
   --chatbox-spacing-none: 0rem;
@@ -25,127 +25,155 @@
 }
 
 :root {
-  /* colors */
-  --chatbox-tint-primary: #212529;
-  --chatbox-tint-secondary: #495057;
-  --chatbox-tint-tertiary: #868e96;
+  /* ── Treehouse Daytime Theme (lush green & warm cream) ── */
+  --chatbox-tint-primary: #1B4332;
+  --chatbox-tint-secondary: #2D6A4F;
+  --chatbox-tint-tertiary: #52796F;
 
   --chatbox-tint-white: #ffffff;
   --chatbox-tint-black: #000000;
-  --chatbox-tint-gray: #868e96;
+  --chatbox-tint-gray: #52796F;
 
-  --chatbox-tint-disabled: #adb5bd;
-  --chatbox-tint-brand: #228be6;
-  --chatbox-tint-placeholder: #adb5bd;
-  --chatbox-tint-error: #fa5252;
-  --chatbox-tint-error-disabled: #ff8787;
-  --chatbox-tint-warning: #fab005;
-  --chatbox-tint-success: #12b886;
+  --chatbox-tint-disabled: #81B29A;
+  --chatbox-tint-brand: #40916C;
+  --chatbox-tint-placeholder: #81B29A;
+  --chatbox-tint-error: #E53935;
+  --chatbox-tint-error-disabled: #EF9A9A;
+  --chatbox-tint-warning: #FB8C00;
+  --chatbox-tint-success: #2E7D32;
 
-  --chatbox-border-primary: #dee2e6;
-  --chatbox-border-secondary: #ced4da;
-  --chatbox-border-warning: #fab005;
-  --chatbox-border-error: #fa5252;
-  --chatbox-border-success: #12b886;
-  --chatbox-border-brand: #228be6;
+  --chatbox-border-primary: #B7E4C7;
+  --chatbox-border-secondary: #81B29A;
+  --chatbox-border-warning: #FB8C00;
+  --chatbox-border-error: #E53935;
+  --chatbox-border-success: #2E7D32;
+  --chatbox-border-brand: #40916C;
 
-  --chatbox-background-primary: #ffffff;
-  --chatbox-background-primary-hover: #f8f9fa;
-  --chatbox-background-secondary: #f1f3f5;
-  --chatbox-background-secondary-hover: #e9ecef;
-  --chatbox-background-tertiary: #dee2e6;
-  --chatbox-background-tertiary-hover: #ced4da;
-  --chatbox-background-disabled: #e9ecef;
+  /* Backgrounds — warm cream with green tints */
+  --chatbox-background-primary: #FFFDF7;
+  --chatbox-background-primary-hover: #F5FFF5;
+  --chatbox-background-secondary: #E8F5E9;
+  --chatbox-background-secondary-hover: #C8E6C9;
+  --chatbox-background-tertiary: #C8E6C9;
+  --chatbox-background-tertiary-hover: #A5D6A7;
+  --chatbox-background-disabled: #E8F5E9;
 
-  --chatbox-background-brand-primary: #228be6;
-  --chatbox-background-brand-primary-hover: #1c7ed6;
-  --chatbox-background-brand-secondary: rgb(34, 139, 230, 0.08);
-  --chatbox-background-brand-secondary-hover: rgb(34, 139, 230, 0.16);
+  /* Brand — forest green */
+  --chatbox-background-brand-primary: #40916C;
+  --chatbox-background-brand-primary-hover: #2D6A4F;
+  --chatbox-background-brand-secondary: rgba(64, 145, 108, 0.10);
+  --chatbox-background-brand-secondary-hover: rgba(64, 145, 108, 0.18);
 
-  --chatbox-background-gray-primary: #868e96;
-  --chatbox-background-gray-primary-hover: #495057;
-  --chatbox-background-gray-secondary: rgb(134, 142, 150, 0.1);
-  --chatbox-background-gray-secondary-hover: rgb(134, 142, 150, 0.12);
+  /* Gray — muted green-gray */
+  --chatbox-background-gray-primary: #52796F;
+  --chatbox-background-gray-primary-hover: #3A5A40;
+  --chatbox-background-gray-secondary: rgba(82, 121, 111, 0.10);
+  --chatbox-background-gray-secondary-hover: rgba(82, 121, 111, 0.14);
 
-  --chatbox-background-success-primary: #12b886;
-  --chatbox-background-success-primary-hover: #0ca678;
-  --chatbox-background-success-secondary: rgb(18, 184, 134, 0.1);
-  --chatbox-background-success-secondary-hover: rgb(18, 184, 134, 0.12);
+  /* Success */
+  --chatbox-background-success-primary: #2E7D32;
+  --chatbox-background-success-primary-hover: #1B5E20;
+  --chatbox-background-success-secondary: rgba(46, 125, 50, 0.10);
+  --chatbox-background-success-secondary-hover: rgba(46, 125, 50, 0.14);
 
-  --chatbox-background-error-primary: #fa5252;
-  --chatbox-background-error-primary-hover: #f03e3e;
-  --chatbox-background-error-secondary: rgb(250, 82, 82, 0.1);
-  --chatbox-background-error-secondary-hover: rgb(250, 82, 82, 0.12);
+  /* Error */
+  --chatbox-background-error-primary: #E53935;
+  --chatbox-background-error-primary-hover: #C62828;
+  --chatbox-background-error-secondary: rgba(229, 57, 53, 0.10);
+  --chatbox-background-error-secondary-hover: rgba(229, 57, 53, 0.14);
 
-  --chatbox-background-warning-primary: #fab005;
-  --chatbox-background-warning-primary-hover: #f59f00;
-  --chatbox-background-warning-secondary: rgb(250, 176, 5, 0.1);
-  --chatbox-background-warning-secondary-hover: rgb(250, 176, 5, 0.12);
+  /* Warning — warm orange (send button accent) */
+  --chatbox-background-warning-primary: #F4A261;
+  --chatbox-background-warning-primary-hover: #E76F51;
+  --chatbox-background-warning-secondary: rgba(244, 162, 97, 0.10);
+  --chatbox-background-warning-secondary-hover: rgba(244, 162, 97, 0.14);
 
-  --chatbox-background-mask-overlay: rgb(59, 59, 59, 0.64);
-  --chatbox-background-mask-lighten: rgb(255, 255, 255, 0.76);
+  /* Masks */
+  --chatbox-background-mask-overlay: rgba(27, 67, 50, 0.64);
+  --chatbox-background-mask-lighten: rgba(255, 253, 247, 0.76);
+
+  /* Treehouse-specific: sidebar & auth background */
+  --treehouse-sidebar-bg: #1B4332;
+  --treehouse-sidebar-bg-accent: #2D6A4F;
+  --treehouse-sidebar-text: #FFFDF7;
+  --treehouse-sidebar-text-muted: #B7E4C7;
+  --treehouse-accent: #F4A261;
 }
 
 :root[data-mantine-color-scheme="dark"] {
-  /* colors */
-  --chatbox-tint-primary: #ffffff;
-  --chatbox-tint-secondary: #ced4da;
-  --chatbox-tint-tertiary: #828282;
+  /* ── Treehouse Nighttime Theme (enchanted midnight blue) ── */
+  --chatbox-tint-primary: #E8D5B7;
+  --chatbox-tint-secondary: #C4A882;
+  --chatbox-tint-tertiary: #7BA3B8;
 
   --chatbox-tint-white: #ffffff;
   --chatbox-tint-black: #000000;
-  --chatbox-tint-gray: #868e96;
+  --chatbox-tint-gray: #7BA3B8;
 
-  --chatbox-tint-disabled: #696969;
-  --chatbox-tint-brand: #4dabf7;
-  --chatbox-tint-placeholder: #828282;
-  --chatbox-tint-error: #f03e3e;
-  --chatbox-tint-error-disabled: rgb(224, 49, 49, 0.5);
-  --chatbox-tint-warning: #ffe066;
-  --chatbox-tint-success: #63e6be;
+  --chatbox-tint-disabled: #3A5068;
+  --chatbox-tint-brand: #FFB74D;
+  --chatbox-tint-placeholder: #5B7B8A;
+  --chatbox-tint-error: #EF5350;
+  --chatbox-tint-error-disabled: rgba(239, 83, 80, 0.5);
+  --chatbox-tint-warning: #FFA726;
+  --chatbox-tint-success: #66BB6A;
 
-  --chatbox-border-primary: #495057;
-  --chatbox-border-secondary: #868e96;
-  --chatbox-border-warning: #ffe066;
-  --chatbox-border-error: #f03e3e;
-  --chatbox-border-success: #63e6be;
-  --chatbox-border-brand: #1971c2;
+  --chatbox-border-primary: #1B3A4B;
+  --chatbox-border-secondary: #274C5B;
+  --chatbox-border-warning: #FFA726;
+  --chatbox-border-error: #EF5350;
+  --chatbox-border-success: #66BB6A;
+  --chatbox-border-brand: #FFB74D;
 
-  --chatbox-background-primary: #242424;
-  --chatbox-background-primary-hover: #1f1f1f;
-  --chatbox-background-secondary: #3b3b3b;
-  --chatbox-background-secondary-hover: #495057;
-  --chatbox-background-tertiary: #424242;
-  --chatbox-background-tertiary-hover: #696969;
-  --chatbox-background-disabled: #2e2e2e;
+  /* Backgrounds — deep midnight blue */
+  --chatbox-background-primary: #0F2027;
+  --chatbox-background-primary-hover: #0A1820;
+  --chatbox-background-secondary: #1B3A4B;
+  --chatbox-background-secondary-hover: #274C5B;
+  --chatbox-background-tertiary: #274C5B;
+  --chatbox-background-tertiary-hover: #3A6070;
+  --chatbox-background-disabled: #1B3A4B;
 
-  --chatbox-background-brand-primary: #1971c2;
-  --chatbox-background-brand-primary-hover: #1864ab;
-  --chatbox-background-brand-secondary: rgb(28, 126, 214, 0.2);
-  --chatbox-background-brand-secondary-hover: rgb(34, 139, 230, 0.24);
+  /* Brand — warm amber/gold */
+  --chatbox-background-brand-primary: #FFB74D;
+  --chatbox-background-brand-primary-hover: #FFA726;
+  --chatbox-background-brand-secondary: rgba(255, 183, 77, 0.15);
+  --chatbox-background-brand-secondary-hover: rgba(255, 183, 77, 0.22);
 
-  --chatbox-background-gray-primary: #343a40;
-  --chatbox-background-gray-primary-hover: #212529;
-  --chatbox-background-gray-secondary: rgb(134, 142, 150, 0.15);
-  --chatbox-background-gray-secondary-hover: rgb(134, 142, 150, 0.2);
+  /* Gray — muted blue-gray */
+  --chatbox-background-gray-primary: #1B3A4B;
+  --chatbox-background-gray-primary-hover: #0F2027;
+  --chatbox-background-gray-secondary: rgba(91, 123, 138, 0.15);
+  --chatbox-background-gray-secondary-hover: rgba(91, 123, 138, 0.22);
 
-  --chatbox-background-success-primary: #099268;
-  --chatbox-background-success-primary-hover: #087f5b;
-  --chatbox-background-success-secondary: rgb(18, 184, 134, 0.15);
-  --chatbox-background-success-secondary-hover: rgb(18, 184, 134, 0.2);
+  /* Success */
+  --chatbox-background-success-primary: #2E7D32;
+  --chatbox-background-success-primary-hover: #1B5E20;
+  --chatbox-background-success-secondary: rgba(102, 187, 106, 0.15);
+  --chatbox-background-success-secondary-hover: rgba(102, 187, 106, 0.22);
 
-  --chatbox-background-error-primary: #e03131;
-  --chatbox-background-error-primary-hover: #c92a2a;
-  --chatbox-background-error-secondary: rgb(250, 82, 82, 0.15);
-  --chatbox-background-error-secondary-hover: rgb(250, 82, 82, 0.2);
+  /* Error */
+  --chatbox-background-error-primary: #C62828;
+  --chatbox-background-error-primary-hover: #B71C1C;
+  --chatbox-background-error-secondary: rgba(239, 83, 80, 0.15);
+  --chatbox-background-error-secondary-hover: rgba(239, 83, 80, 0.22);
 
-  --chatbox-background-warning-primary: #f08c00;
-  --chatbox-background-warning-primary-hover: #e67700;
-  --chatbox-background-warning-secondary: rgb(250, 176, 5, 0.15);
-  --chatbox-background-warning-secondary-hover: rgb(250, 176, 5, 0.2);
+  /* Warning */
+  --chatbox-background-warning-primary: #FFA726;
+  --chatbox-background-warning-primary-hover: #FF9800;
+  --chatbox-background-warning-secondary: rgba(255, 167, 38, 0.15);
+  --chatbox-background-warning-secondary-hover: rgba(255, 167, 38, 0.22);
 
-  --chatbox-background-mask-overlay: rgb(31, 31, 31, 0.78);
-  --chatbox-background-mask-lighten: rgb(173, 181, 189, 0.48);
+  /* Masks */
+  --chatbox-background-mask-overlay: rgba(15, 32, 39, 0.78);
+  --chatbox-background-mask-lighten: rgba(91, 123, 138, 0.48);
+
+  /* Treehouse-specific: sidebar & auth background */
+  --treehouse-sidebar-bg: #0D1B2A;
+  --treehouse-sidebar-bg-accent: #1B3A4B;
+  --treehouse-sidebar-text: #E8D5B7;
+  --treehouse-sidebar-text-muted: #9BBCC8;
+  --treehouse-accent: #FFB74D;
 }
 
 :root[data-mantine-color-scheme="light"][data-mantine-color-scheme],
@@ -208,6 +236,67 @@
   --mantine-color-chatbox-primary-light-color: var(--chatbox-tint-primary);
   --mantine-color-chatbox-primary-outline: var(--chatbox-border-primary);
   --mantine-color-chatbox-primary-outline-hover: color-mix(in srgb, var(--chatbox-border-primary), transparent 95%);
+}
+
+/* ── Treehouse textured backgrounds ── */
+.treehouse-sidebar-texture {
+  position: relative;
+}
+
+.treehouse-auth-bg {
+  position: relative;
+  background: var(--treehouse-sidebar-bg) !important;
+}
+
+/* Force light text inside the dark sidebar */
+.treehouse-sidebar-texture,
+.treehouse-sidebar-texture * {
+  --mantine-color-text: var(--treehouse-sidebar-text);
+}
+.treehouse-sidebar-texture .mantine-Text-root {
+  color: var(--treehouse-sidebar-text-muted);
+}
+.treehouse-sidebar-texture .mantine-NavLink-root,
+.treehouse-sidebar-texture .mantine-NavLink-label,
+.treehouse-sidebar-texture .mantine-Button-label,
+.treehouse-sidebar-texture .mantine-ActionIcon-root {
+  color: var(--treehouse-sidebar-text-muted);
+}
+.treehouse-sidebar-texture .mantine-NavLink-root:hover,
+.treehouse-sidebar-texture .mantine-NavLink-root[data-active] {
+  background: rgba(255, 255, 255, 0.08);
+}
+.treehouse-sidebar-texture .mantine-NavLink-root[data-active] .mantine-NavLink-label {
+  color: var(--treehouse-sidebar-text);
+}
+.treehouse-sidebar-texture .mantine-SegmentedControl-root {
+  background: rgba(255, 255, 255, 0.06);
+}
+.treehouse-sidebar-texture .mantine-SegmentedControl-label {
+  color: var(--treehouse-sidebar-text-muted);
+}
+.treehouse-sidebar-texture .mantine-Divider-root {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+.treehouse-sidebar-texture a,
+.treehouse-sidebar-texture button,
+.treehouse-sidebar-texture label,
+.treehouse-sidebar-texture p,
+.treehouse-sidebar-texture span,
+.treehouse-sidebar-texture h1,
+.treehouse-sidebar-texture h2,
+.treehouse-sidebar-texture h3 {
+  color: var(--treehouse-sidebar-text-muted);
+}
+.treehouse-sidebar-texture svg {
+  color: var(--treehouse-sidebar-text-muted);
+}
+/* Scrollbar inside sidebar */
+.treehouse-sidebar-texture ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+}
+.treehouse-sidebar-texture ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
 }
 
 .mantine-Spotlight-actionsGroup {

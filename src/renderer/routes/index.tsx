@@ -16,7 +16,9 @@ import { ScalableIcon } from '@/components/common/ScalableIcon'
 import { ImageInStorage } from '@/components/Image'
 import InputBox, { type InputBoxPayload } from '@/components/InputBox/InputBox'
 import HomepageIcon from '@/components/icons/HomepageIcon'
+import TreehouseIcon from '@/components/TreehouseIcon'
 import Page from '@/components/layout/Page'
+import { useAuth } from '@/hooks/useAuth'
 import { useMyCopilots, useRemoteCopilotsByCursor } from '@/hooks/useCopilots'
 import { useProviders } from '@/hooks/useProviders'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
@@ -65,11 +67,13 @@ function Index() {
 
   const { providers } = useProviders()
   const language = useLanguage()
+  const { user } = useAuth()
+  const isTeacher = user?.role === 'teacher'
   const hasLicense = useSettingsStore((s) => Boolean(s.licenseKey))
   const isLoggedIn = useAuthInfoStore((s) => Boolean(s.accessToken && s.refreshToken))
   const welcomeCardMode = useMemo(
-    () => getHomeWelcomeCardMode({ providerCount: providers.length, isLoggedIn, hasLicense }),
-    [providers.length, isLoggedIn, hasLicense]
+    () => (isTeacher ? getHomeWelcomeCardMode({ providerCount: providers.length, isLoggedIn, hasLicense }) : null),
+    [providers.length, isLoggedIn, hasLicense, isTeacher]
   )
 
   const selectedModel = useMemo(() => {
@@ -230,10 +234,13 @@ function Index() {
     <Page title="">
       <div className="p-0 flex flex-col h-full">
         {messageLayout || welcomeCardMode != null ? (
-          <Stack align="center" justify="center" gap="sm" flex={1}>
-            <HomepageIcon className="h-8" />
+          <Stack align="center" justify="center" gap="md" flex={1}>
+            <TreehouseIcon size={isSmallScreen ? 160 : 220} />
             <Text fw="600" size={isSmallScreen ? 'sm' : 'md'}>
               {t('What can I help you with today?')}
+            </Text>
+            <Text size="xs" c="chatbox-tertiary">
+              Ask me anything — let's learn together!
             </Text>
           </Stack>
         ) : (

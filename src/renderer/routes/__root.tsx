@@ -9,6 +9,7 @@ import { useI18nEffect } from '@/hooks/useI18nEffect'
 import useNeedRoomForWinControls from '@/hooks/useNeedRoomForWinControls'
 import { useSidebarWidth } from '@/hooks/useScreenChange'
 import useShortcut from '@/hooks/useShortcut'
+import { useTimeOfDay } from '@/hooks/useTimeOfDay'
 import useVersion from '@/hooks/useVersion'
 import '@/modals'
 import NiceModal from '@ebay/nice-modal-react'
@@ -280,6 +281,18 @@ function Root() {
     }
   }, [needRoomForMacWindowControls])
 
+  const isAuthPage = location.pathname === '/auth'
+
+  // Auth page renders only the Outlet (the auth modal) — no sidebar, no chrome
+  if (isAuthPage) {
+    return (
+      <Box className="box-border App relative" spellCheck={spellCheck} dir={language === 'ar' ? 'rtl' : 'ltr'}>
+        <Outlet />
+        <Toasts />
+      </Box>
+    )
+  }
+
   return (
     <AuthGuard>
     <Box className="box-border App relative" spellCheck={spellCheck} dir={language === 'ar' ? 'rtl' : 'ltr'}>
@@ -288,9 +301,11 @@ function Root() {
       <Grid container className="h-full relative z-[1]">
         <Sidebar />
         <Box
-          className="h-full w-full"
+          className="h-full"
           sx={{
             flexGrow: 1,
+            minWidth: 0,
+            overflow: 'hidden',
             ...(showSidebar
               ? language === 'ar'
                 ? { paddingRight: { sm: `${sidebarWidth}px` } }
@@ -303,32 +318,12 @@ function Root() {
           </ErrorBoundary>
         </Box>
       </Grid>
-      {/* 对话设置 */}
-      {/* <AppStoreRatingDialog /> */}
-      {/* 代码预览 */}
-      {/* <ArtifactDialog /> */}
-      {/* 对话列表清理 */}
-      {/* <ChatConfigWindow /> */}
-      {/* 似乎未使用 */}
-      {/* <CleanWidnow /> */}
-      {/* 对话列表清理 */}
-      {/* <ClearConversationListWindow /> */}
-      {/* 导出聊天记录 */}
-      {/* <ExportChatDialog /> */}
-      {/* 编辑消息 */}
-      {/* <MessageEditDialog /> */}
-      {/* 添加链接 */}
-      {/* <OpenAttachLinkDialog /> */}
       {/* 图片预览 */}
       <PictureDialog />
       {/* 似乎是从后端拉一个弹窗的配置 */}
       <RemoteDialogWindow />
-      {/* 手机端举报内容 */}
-      {/* <ReportContentDialog /> */}
       {/* 搜索 */}
       <SearchDialog />
-      {/* 没有配置模型时的欢迎弹窗 */}
-      {/* <WelcomeDialog /> */}
       <Toasts /> {/* mui */}
       <SettingsModal />
     </Box>
@@ -607,6 +602,7 @@ export const Route = createRootRoute({
     premiumActions.useAutoValidate() // 每次启动都执行 license 检查，防止用户在lemonsqueezy管理页面中取消了当前设备的激活
     useSystemLanguageWhenInit()
     useShortcut()
+    useTimeOfDay()
     const theme = useAppTheme()
     const _theme = useTheme()
     const fontSize = useSettingsStore((state) => state.fontSize)
