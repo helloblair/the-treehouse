@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { BODY_SYSTEMS } from './data/systems'
 import { initMessaging, sendStateUpdate } from './lib/messaging'
-import { registerBodyTools, handleToolCall } from './lib/tools'
+import { getProgress, getSystems, getPartInfo } from './lib/tools'
 import type { BodyPart, BodySystemConfig, PlayerStats } from './types'
 
 // ─── Emoji shorthand ────────────────────────────────────────────────
@@ -640,15 +640,8 @@ export default function App() {
 
   const statsRef = useRef(stats)
   statsRef.current = stats
-
-  // Register tools on mount; pass restore handler for cross-session persistence
-  useEffect(() => {
-    registerBodyTools(() => statsRef.current)
-    const cleanup = initMessaging(handleToolCall, (restored) => {
-      setStats(restored)
-    })
-    return cleanup
-  }, [])
+  const activeSystemRef = useRef(activeSystem)
+  activeSystemRef.current = activeSystem
 
   const earnedBadges = BADGES.filter((b) => b.check(stats))
 
@@ -667,10 +660,130 @@ export default function App() {
     [stats],
   )
 
+  // Apply a quiz result and return updated stats.
+  // Also marks the part as explored in the same atomic update,
+  // so both the UI path and the tool-call path persist consistently.
+  const applyQuizResult = useCallback(
+    (systemId: string, partId: string, correct: boolean): PlayerStats => {
+      const prev = statsRef.current
+
+      // Merge explored-parts update into the same stats object
+      const newExplored = new Set(prev.exploredParts[systemId])
+      newExplored.add(partId)
+
+      const newQuizResults = { ...prev.quizResults }
+      newQuizResults[systemId] = { ...prev.quizResults[systemId], [partId]: correct }
+
+      const newStats: PlayerStats = {
+        ...prev,
+        totalQuizzes: prev.totalQuizzes + 1,
+        totalCorrect: correct ? prev.totalCorrect + 1 : prev.totalCorrect,
+        currentStreak: correct ? prev.currentStreak + 1 : 0,
+        bestStreak: correct
+          ? Math.max(prev.bestStreak, prev.currentStreak + 1)
+          : prev.bestStreak,
+        xp: prev.xp + (correct ? 20 : 5),
+        quizResults: newQuizResults,
+        exploredParts: { ...prev.exploredParts, [systemId]: newExplored },
+        perfectSystems: new Set(prev.perfectSystems),
+      }
+
+      const sysData = BODY_SYSTEMS[systemId]
+      const sysResults = newStats.quizResults[systemId]
+      const quizzable = sysData.parts.filter((p) => p.quiz)
+      if (quizzable.every((p) => sysResults[p.id] === true)) {
+        ;(newStats.perfectSystems as Set<string>).add(systemId)
+      }
+
+      checkNewBadges(newStats)
+      setStats(newStats)
+      sendStateUpdate(newStats)
+      return newStats
+    },
+    [checkNewBadges],
+  )
+
+  // Tool handler with access to state setters
+  const handleToolCall = useCallback(
+    (toolName: string, params: Record<string, unknown>): unknown => {
+      switch (toolName) {
+        case 'get_progress':
+          return getProgress(statsRef.current)
+
+        case 'get_systems':
+          return getSystems()
+
+        case 'get_part_info': {
+          const sysId = (params.system_id as string) || activeSystemRef.current
+          const partId = params.part_id as string
+          if (!partId) return { error: 'part_id is required' }
+          return getPartInfo(sysId, partId)
+        }
+
+        case 'record_quiz_answer': {
+          const sysId = (params.system_id as string) || activeSystemRef.current
+          const partId = params.part_id as string
+          const correct = params.correct as boolean
+          if (!partId) return { error: 'part_id is required' }
+          if (typeof correct !== 'boolean') return { error: 'correct (boolean) is required' }
+
+          // Validate systemId and partId before proceeding
+          const sys = BODY_SYSTEMS[sysId]
+          if (!sys) return { error: `Unknown system_id: ${sysId}. Valid: ${SYSTEM_IDS.join(', ')}` }
+          const part = sys.parts.find((p) => p.id === partId)
+          if (!part) return { error: `Unknown part_id: ${partId} in system ${sysId}` }
+
+          // applyQuizResult handles explored-parts + quiz + XP + persistence atomically
+          const updated = applyQuizResult(sysId, partId, correct)
+          return {
+            recorded: true,
+            correct,
+            xp: updated.xp,
+            currentStreak: updated.currentStreak,
+            bestStreak: updated.bestStreak,
+            partName: part.name,
+            systemName: sys.name,
+          }
+        }
+
+        case 'start_quiz':
+          return {
+            message:
+              'Click on any body part in the diagram, then I\'ll quiz you about it!',
+          }
+
+        default:
+          return { error: `Unknown tool: ${toolName}` }
+      }
+    },
+    [applyQuizResult],
+  )
+
+  // Init messaging on mount; pass restore handler for cross-session persistence
+  useEffect(() => {
+    const cleanup = initMessaging(handleToolCall, (restored) => {
+      setStats(restored)
+    })
+    return cleanup
+  }, [handleToolCall])
+
+  // Debounce chat messages so rapid clicks don't spam the AI mid-generation
+  const chatTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const pendingMsgRef = useRef<{ stats: PlayerStats; msg: string } | null>(null)
+
+  const flushChatMessage = useCallback(() => {
+    const pending = pendingMsgRef.current
+    if (pending) {
+      pendingMsgRef.current = null
+      sendStateUpdate(pending.stats, pending.msg)
+    }
+  }, [])
+
   const handlePartClick = (part: BodyPart) => {
     setActivePart(part)
     setShowQuiz(false)
     const newExplored = new Set(stats.exploredParts[activeSystem])
+    const isFirstVisit = !newExplored.has(part.id)
     newExplored.add(part.id)
     const newExploredParts = { ...stats.exploredParts }
     newExploredParts[activeSystem] = newExplored
@@ -682,41 +795,24 @@ export default function App() {
     }
     checkNewBadges(newStats)
     setStats(newStats)
+
+    // Always persist state immediately (no chat message)
     sendStateUpdate(newStats)
+
+    // Debounce the chat message: cancel any pending one and queue this one.
+    // Only the last click within 600ms actually sends to chat.
+    const sysName = BODY_SYSTEMS[activeSystem].name
+    const msg = isFirstVisit
+      ? `I just clicked on the ${part.name} in the ${sysName}! Tell me about it and quiz me.`
+      : `I'm looking at the ${part.name} in the ${sysName} again. Quiz me on it!`
+    pendingMsgRef.current = { stats: newStats, msg }
+    clearTimeout(chatTimerRef.current)
+    chatTimerRef.current = setTimeout(flushChatMessage, 600)
   }
 
   const handleQuizAnswer = (correct: boolean) => {
     if (!activePart) return
-    const newQuizResults = { ...stats.quizResults }
-    newQuizResults[activeSystem] = {
-      ...stats.quizResults[activeSystem],
-      [activePart.id]: correct,
-    }
-
-    const newStats: PlayerStats = {
-      ...stats,
-      totalQuizzes: stats.totalQuizzes + 1,
-      totalCorrect: correct ? stats.totalCorrect + 1 : stats.totalCorrect,
-      currentStreak: correct ? stats.currentStreak + 1 : 0,
-      bestStreak: correct
-        ? Math.max(stats.bestStreak, stats.currentStreak + 1)
-        : stats.bestStreak,
-      xp: stats.xp + (correct ? 20 : 5),
-      quizResults: newQuizResults,
-      perfectSystems: new Set(stats.perfectSystems),
-    }
-
-    // Check if entire system is now perfect
-    const sysData = BODY_SYSTEMS[activeSystem]
-    const sysResults = newStats.quizResults[activeSystem]
-    const quizzableParts = sysData.parts.filter((p) => p.quiz)
-    if (quizzableParts.every((p) => sysResults[p.id] === true)) {
-      ;(newStats.perfectSystems as Set<string>).add(activeSystem)
-    }
-
-    checkNewBadges(newStats)
-    setStats(newStats)
-    sendStateUpdate(newStats)
+    applyQuizResult(activeSystem, activePart.id, correct)
     setTimeout(() => {
       setShowQuiz(false)
       setActivePart(null)
@@ -730,6 +826,45 @@ export default function App() {
   const quizzedCorrect = Object.values(
     stats.quizResults[activeSystem] ?? {},
   ).filter(Boolean).length
+
+  // Standalone detection: redirect to main app if not in an iframe
+  if (window.parent === window) {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100vh',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        background: '#0f172a',
+        color: '#e2e8f0',
+        textAlign: 'center',
+        padding: 24,
+      }}>
+        <div>
+          <h2 style={{ fontSize: 20, marginBottom: 12, color: '#f8fafc' }}>This app runs inside The Treehouse</h2>
+          <p style={{ fontSize: 14, opacity: 0.7, marginBottom: 16 }}>
+            It's designed to be embedded in the chat experience, not visited directly.
+          </p>
+          <a
+            href="https://thetreehouse.vercel.app"
+            style={{
+              display: 'inline-block',
+              padding: '10px 24px',
+              background: '#3b82f6',
+              color: '#fff',
+              borderRadius: 8,
+              textDecoration: 'none',
+              fontSize: 14,
+              fontWeight: 500,
+            }}
+          >
+            Go to The Treehouse
+          </a>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div

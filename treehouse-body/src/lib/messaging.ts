@@ -2,7 +2,7 @@ import type { TreehouseToolCall } from '../types'
 import type { PlayerStats } from '../types'
 
 const PLUGIN_ID = 'treehouse-body'
-const PLATFORM_ORIGIN = import.meta.env.VITE_PLATFORM_ORIGIN || '*'
+const PLATFORM_ORIGIN = import.meta.env.VITE_PLATFORM_ORIGIN || 'http://localhost:1212'
 
 type ToolHandler = (
   toolName: string,
@@ -90,12 +90,12 @@ export function sendReady() {
   )
 }
 
-export function sendStateUpdate(stats: PlayerStats) {
+export function sendStateUpdate(stats: PlayerStats, userMessage?: string) {
   window.parent.postMessage(
     {
       type: 'TREEHOUSE_STATE_UPDATE',
       pluginId: PLUGIN_ID,
-      payload: { state: serializeStats(stats) },
+      payload: { state: serializeStats(stats), userMessage },
     },
     PLATFORM_ORIGIN,
   )
@@ -104,7 +104,7 @@ export function sendStateUpdate(stats: PlayerStats) {
 // ─── Inbound message listener ──────────────────────────────────────
 
 function onMessage(event: MessageEvent) {
-  if (PLATFORM_ORIGIN !== '*' && event.origin !== PLATFORM_ORIGIN) return
+  if (event.origin !== PLATFORM_ORIGIN) return
   const data = event.data
 
   if (data?.type === 'TREEHOUSE_TOOL_CALL' && data?.pluginId === PLUGIN_ID) {
