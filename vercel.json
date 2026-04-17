@@ -4,7 +4,8 @@
   "installCommand": "pnpm install",
   "framework": null,
   "functions": {
-    "api/claude.ts": { "maxDuration": 30 }
+    "api/claude.ts": { "maxDuration": 30 },
+    "api/claim-teacher-role.ts": { "maxDuration": 10 }
   },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },

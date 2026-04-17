@@ -182,23 +182,16 @@ function App() {
   }, [])
 
   const fetchLeaderboard = useCallback(async (): Promise<{ display_name: string; lifetime_earned: number }[]> => {
-    const { data } = await supabase
-      .from('user_profiles')
-      .select('user_id, display_name')
-      .eq('role', 'student')
-    const profiles = (data ?? []) as { user_id: string; display_name: string }[]
-
-    const { data: wallets } = await supabase
-      .from('token_wallets')
-      .select('user_id, lifetime_earned')
-    const walletMap = new Map((wallets ?? []).map((w: Record<string, unknown>) => [w.user_id, w]))
-
-    return profiles
-      .map((p) => {
-        const w = walletMap.get(p.user_id) as Record<string, unknown> | undefined
-        return { display_name: p.display_name, lifetime_earned: (w?.lifetime_earned as number) ?? 0 }
-      })
-      .sort((a, b) => b.lifetime_earned - a.lifetime_earned)
+    // Calls the SECURITY DEFINER RPC instead of joining user_profiles and
+    // token_wallets directly. After the 20260408 lockdown, students no longer
+    // have SELECT on every other student's profile or wallet — get_leaderboard
+    // returns sanitized rows server-side.
+    const { data, error } = await supabase.rpc('get_leaderboard', { p_limit: 20 })
+    if (error) {
+      console.warn('[treehouse-tokens] leaderboard fetch failed:', error)
+      return []
+    }
+    return (data ?? []) as { display_name: string; lifetime_earned: number }[]
   }, [])
 
   const refreshStudentData = useCallback(async (uid: string) => {

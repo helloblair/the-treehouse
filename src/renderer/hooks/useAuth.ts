@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import platform from '@/platform'
 import { supabase } from '@/lib/supabase'
+import { pluginStore } from '@/stores/pluginStore'
 
 const AUTH_TOKEN_KEY = 'treehouse_auth_token'
 
@@ -35,6 +36,15 @@ export async function getAuthToken(): Promise<string | null> {
   return platform.getStoreValue(AUTH_TOKEN_KEY)
 }
 
+// Expose getAuthToken to non-React code (notably the Claude provider's proxy
+// fetch wrapper in src/shared, which can't import renderer modules) so the
+// /api/claude edge function can authenticate every request. The wrapper reads
+// `globalThis.__treehouseGetAuthToken` at request time and forwards the JWT.
+if (typeof globalThis !== 'undefined') {
+  ;(globalThis as { __treehouseGetAuthToken?: () => Promise<string | null> }).__treehouseGetAuthToken =
+    getAuthToken
+}
+
 export async function setAuthToken(token: string): Promise<void> {
   await platform.setStoreValue(AUTH_TOKEN_KEY, token)
   notifyAuthChange()
@@ -61,13 +71,13 @@ export async function validateToken(token: string): Promise<AuthUser | null> {
     const userId = payload.sub as string | undefined
     if (!email || !userId) return null
 
-    // Role from user_metadata (set during signUp)
-    const metaRole = payload.user_metadata?.role
-    let role: 'teacher' | 'student' | 'support' =
-      metaRole === 'support' ? 'support' : metaRole === 'teacher' ? 'teacher' : 'student'
-
-    // If no role in JWT metadata, try user_profiles table
-    if (!metaRole && supabase) {
+    // Role is read exclusively from user_profiles. JWT user_metadata is set
+    // by the user themselves at signup (via the `data:` field on signUp), so
+    // it is forgeable and must never be trusted for privileged decisions.
+    // Direct client writes to user_profiles.role are blocked by column-level
+    // grants — see supabase/migrations/20260407_lock_role_column.sql.
+    let role: 'teacher' | 'student' | 'support' = 'student'
+    if (supabase) {
       const { data: profile } = await supabase
         .from('user_profiles')
         .select('role')
@@ -124,6 +134,23 @@ export function useAuth(): AuthState {
 
 export function useSignOut() {
   return useCallback(async () => {
+    // Wipe per-user secrets that the next signed-in user must not inherit on
+    // shared devices (school computers, family iPads). Plugin OAuth tokens
+    // are scoped to whoever authorized them, not to the current Supabase
+    // session, so they leak across users unless we clear them explicitly.
+    try {
+      pluginStore.setState((state) => {
+        state.oauthTokens = {}
+        state.pluginStates = {}
+      })
+      // The persist middleware writes are debounced through StoreStorage, so
+      // navigating away can race the flush. Delete the persisted entry
+      // directly to guarantee the next user starts with a clean slate.
+      await platform.delStoreValue('plugin-store')
+    } catch (err) {
+      console.warn('[treehouse-auth] failed to clear plugin store on signout:', err)
+    }
+
     await clearAuthToken()
     window.location.href = '/auth'
   }, [])

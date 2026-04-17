@@ -28,14 +28,12 @@ function AuthPage() {
         return
       }
 
-      // Validate teacher code
-      if (role === 'teacher') {
-        // @ts-ignore - import.meta.env is a Vite feature
-        const expectedCode = (import.meta.env?.VITE_TEACHER_CODE as string) || 'oak2026'
-        if (teacherCode !== expectedCode) {
-          setError('Invalid teacher code.')
-          return
-        }
+      // Teacher code is validated server-side by /api/claim-teacher-role
+      // after the user has authenticated. We only check that one was supplied
+      // before kicking off the auth flow.
+      if (role === 'teacher' && !teacherCode) {
+        setError('Teacher code is required.')
+        return
       }
 
       setIsSubmitting(true)
@@ -48,14 +46,16 @@ function AuthPage() {
 
         let session = signInData?.session
 
-        // If user does not exist, sign them up
+        // If user does not exist, sign them up. We never pass `role` into
+        // user_metadata — the role is read from user_profiles, which is the
+        // only place a privileged role can legitimately live.
         if (signInError?.message?.toLowerCase().includes('invalid login credentials') ||
             signInError?.message?.toLowerCase().includes('user not found')) {
           const { data: signUpData, error: signUpError } = await supabase!.auth.signUp({
             email,
             password,
             options: {
-              data: { role, display_name: email.split('@')[0] }
+              data: { display_name: email.split('@')[0] }
             }
           })
           // "User already registered" means the sign-in password was wrong, not that the user is new
@@ -85,15 +85,34 @@ function AuthPage() {
         // Store the Supabase access token — useAuth reads this
         await setAuthToken(session.access_token)
 
-        // Upsert user profile with role (non-blocking)
-        supabase!.from('user_profiles').upsert({
+        // Insert the profile row if it doesn't exist yet. New rows are forced
+        // to role='student' by the user_profiles_insert RLS policy; column
+        // grants prevent us from updating role from the client at all, so we
+        // intentionally use ignoreDuplicates to avoid touching existing rows.
+        const { error: upsertErr } = await supabase!.from('user_profiles').upsert({
           user_id: session.user.id,
           email,
           display_name: email.split('@')[0],
-          role,
-        }, { onConflict: 'user_id' }).then(({ error: upsertErr }) => {
-          if (upsertErr) console.warn('[treehouse-auth] profile upsert failed:', upsertErr)
-        })
+          role: 'student',
+        }, { onConflict: 'user_id', ignoreDuplicates: true })
+        if (upsertErr) console.warn('[treehouse-auth] profile upsert failed:', upsertErr)
+
+        // If the user picked "teacher", ask the server to validate the code
+        // and elevate their role. The browser never sees the secret.
+        if (role === 'teacher') {
+          const claimRes = await fetch('/api/claim-teacher-role', {
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json',
+              authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({ code: teacherCode }),
+          })
+          if (!claimRes.ok) {
+            const { error: claimErr } = await claimRes.json().catch(() => ({ error: '' }))
+            throw new Error(claimErr || 'Failed to verify teacher code.')
+          }
+        }
 
         // Allow useAuth to pick up the new token before navigating
         await new Promise((r) => setTimeout(r, 100))

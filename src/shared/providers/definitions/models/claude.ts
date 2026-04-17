@@ -42,11 +42,15 @@ export default class Claude extends AbstractAISDKModel {
 
   /**
    * Creates a fetch wrapper that redirects Anthropic API calls through the
-   * serverless proxy at /api/claude, keeping the API key server-side.
+   * serverless proxy at /api/claude, keeping the API key server-side. Every
+   * proxied request carries the user's Supabase JWT in the `x-treehouse-auth`
+   * header so the edge function can authenticate the caller and refuse
+   * unauthenticated traffic — without auth, /api/claude would let anyone on
+   * the internet burn the platform's Anthropic credits.
    */
   private createProxyFetch(): typeof globalThis.fetch {
     const baseFetch = this.options.customFetch || globalThis.fetch
-    return (input: RequestInfo | URL, init?: RequestInit) => {
+    return async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
       // Rewrite Anthropic URLs to our proxy, passing the original path as a query param
       if (url.includes('api.anthropic.com')) {
@@ -57,6 +61,16 @@ export default class Claude extends AbstractAISDKModel {
         headers.delete('x-api-key')
         headers.delete('authorization')
         headers.delete('anthropic-dangerous-direct-browser-access')
+        // Attach the renderer's Supabase JWT via the bridge installed by
+        // src/renderer/hooks/useAuth.ts. Read at request time so token
+        // refreshes are picked up automatically.
+        const tokenGetter = (
+          globalThis as { __treehouseGetAuthToken?: () => Promise<string | null> }
+        ).__treehouseGetAuthToken
+        const treehouseToken = tokenGetter ? await tokenGetter() : null
+        if (treehouseToken) {
+          headers.set('x-treehouse-auth', `Bearer ${treehouseToken}`)
+        }
         return baseFetch(proxyUrl, { ...init, headers })
       }
       return baseFetch(input, init)
