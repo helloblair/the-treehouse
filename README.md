@@ -49,13 +49,13 @@ Copy `.env.example` to `.env.local` and fill in values. Variables prefixed with 
 
 ### Client-side (VITE\_)
 
+These are inlined into the browser bundle at build time. Anything sensitive must live in the server-side section instead.
+
 | Variable | Description | Default |
 |---|---|---|
 | `VITE_SUPABASE_URL` | Supabase project URL | *required* |
-| `VITE_SUPABASE_ANON_KEY` | Supabase anonymous key | *required* |
+| `VITE_SUPABASE_ANON_KEY` | Supabase anonymous key (RLS-protected, designed to be public) | *required* |
 | `VITE_PLATFORM_ORIGIN` | Origin for postMessage validation between host and plugin iframes | `http://localhost:1212` |
-| `VITE_JWT_SECRET` | Secret for signing platform auth tokens | *required* |
-| `VITE_TEACHER_CODE` | Access code required to register as a teacher | *required* |
 | `VITE_PLUGIN_CHESS_URL` | PokéChess plugin URL | `http://localhost:5174` |
 | `VITE_PLUGIN_PIXELART_URL` | Pixel Art plugin URL | `http://localhost:5175` |
 | `VITE_PLUGIN_PET_URL` | PET-agogy plugin URL | `http://localhost:5176` |
@@ -65,13 +65,17 @@ Copy `.env.example` to `.env.local` and fill in values. Variables prefixed with 
 
 ### Server-side
 
-| Variable | Description | Where |
-|---|---|---|
-| `ANTHROPIC_API_KEY` | Anthropic API key for the Claude proxy | Vercel env vars only — never in `.env.local` or client code |
+Set these in **Vercel Dashboard > Environment Variables** only. They are read by edge functions in `api/` and never reach the browser bundle.
+
+| Variable | Description |
+|---|---|
+| `ANTHROPIC_API_KEY` | Anthropic API key for the Claude proxy at [`api/claude.ts`](api/claude.ts) |
+| `TEACHER_CODE` | Access code required to claim the teacher role. Validated server-side by [`api/claim-teacher-role.ts`](api/claim-teacher-role.ts) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service-role key. Used by the teacher-claim function to write `user_profiles.role`, which authenticated clients are not permitted to modify directly |
 
 ## Deployment
 
-The Treehouse is deployed on **Vercel** as a static web app with one edge function.
+The Treehouse is deployed on **Vercel** as a static web app with two edge functions.
 
 ### Vercel configuration
 
@@ -79,27 +83,31 @@ The Treehouse is deployed on **Vercel** as a static web app with one edge functi
 
 - **Build command:** `cross-env CHATBOX_BUILD_PLATFORM=web electron-vite build`
 - **Output directory:** `release/app/dist/renderer`
-- **Edge function:** `api/claude.ts` — proxies Anthropic API requests server-side so the API key never reaches the browser
-- **Rewrites:** `/api/*` routes to the edge function; everything else falls through to `index.html` for SPA routing
+- **Edge functions:**
+  - [`api/claude.ts`](api/claude.ts) — authenticated proxy for the Anthropic API
+  - [`api/claim-teacher-role.ts`](api/claim-teacher-role.ts) — verifies the teacher access code and grants the role server-side
+- **Rewrites:** `/api/*` routes to edge functions; everything else falls through to `index.html` for SPA routing
 
 ### Claude API proxy
 
 [`api/claude.ts`](api/claude.ts) is a Vercel edge function that:
 
 1. Reads `ANTHROPIC_API_KEY` from the server environment
-2. Forwards the request to `api.anthropic.com` with the key injected
-3. Streams the response back to the client
+2. Verifies the caller's Supabase JWT (sent in the `x-treehouse-auth` header) — unauthenticated requests are rejected so anonymous traffic can't burn the platform's Anthropic credits
+3. Forwards the request to `api.anthropic.com` with the key injected
+4. Streams the response back to the client
 
-On web builds, if no user-provided API key is present, the Claude provider automatically rewrites Anthropic API URLs to `/api/claude` — see [`src/shared/providers/definitions/models/claude.ts`](src/shared/providers/definitions/models/claude.ts). Users on the deployed site chat with Claude without needing their own key.
+On web builds, if no user-provided API key is present, the Claude provider automatically rewrites Anthropic API URLs to `/api/claude` and attaches the user's Supabase JWT — see [`src/shared/providers/definitions/models/claude.ts`](src/shared/providers/definitions/models/claude.ts). Users on the deployed site chat with Claude without needing their own key, but only after signing in.
 
 ### Required Vercel environment variables
 
 Set these in **Vercel Dashboard > Project > Settings > Environment Variables**:
 
-- `ANTHROPIC_API_KEY` — the Claude proxy reads this at runtime
+- `ANTHROPIC_API_KEY` — server-only, read by the Claude proxy at runtime
+- `TEACHER_CODE` — server-only, validated by the teacher-claim edge function
+- `SUPABASE_SERVICE_ROLE_KEY` — server-only, used to write privileged columns the client can't touch
 - `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` — baked into the build
 - `VITE_PLUGIN_*_URL` (all 6) — plugin production URLs (see table above)
-- `VITE_TEACHER_CODE` / `VITE_JWT_SECRET` — baked into the build
 
 ## Plugin Apps
 
@@ -125,15 +133,18 @@ The Treehouse has three roles with different permissions:
 
 ### Teacher
 
-- Requires `VITE_TEACHER_CODE` at sign-up
+- Requires the server-side `TEACHER_CODE` at sign-up. The code is validated by [`api/claim-teacher-role.ts`](api/claim-teacher-role.ts), which then uses the Supabase service-role key to set `user_profiles.role = 'teacher'` for that user. Direct client writes to the role column are blocked by column-level grants in [`supabase/migrations/20260407_lock_role_column.sql`](supabase/migrations/20260407_lock_role_column.sql)
 - Can create assignments, approve/reject submissions, view all student data
 - Approving a submission atomically awards tokens **and** +20 pet XP (with auto-evolution at 100/300 XP thresholds)
 
 ### Support / Dev
 
-- Internal accounts stored in the `support_users` table alongside `auth.users`
-- Each account has a `role` (`dev` or `support`) and an `access_code`
+- Internal accounts seeded directly into `auth.users` with a matching `user_profiles` row whose `role = 'support'` — see [`supabase/migrations/20260406_support_role.sql`](supabase/migrations/20260406_support_role.sql)
 - Support users inherit teacher-level RLS access (the `is_teacher()` helper includes support roles)
+
+### Sign-out and shared devices
+
+`useSignOut` clears the Supabase access token **and** wipes the persisted plugin store entry, so plugin OAuth tokens (the user's own credentials to third-party services like Spotify or GitHub) do not leak to the next user on a shared school device. See [`src/renderer/hooks/useAuth.ts`](src/renderer/hooks/useAuth.ts).
 
 ## Database
 
